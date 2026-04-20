@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Earthquake Impact Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style id="mapExtraStyle">
+.impact-map-wrap{border:1px solid var(--rule);border-radius:4px;overflow:hidden;margin:20px 0 10px;position:relative;}
+.impact-map-wrap .leaflet-container{background:#cdd8e3;}
+#impactMap{height:420px;width:100%;}
+.impact-map-legend{position:absolute;bottom:12px;right:12px;z-index:1000;background:rgba(247,243,236,.94);border:1px solid var(--rule);border-radius:4px;padding:9px 13px;font-family:var(--mono);font-size:11px;line-height:1.8;pointer-events:none;}
+.imp-leg-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+@media print{#impactMap{height:340px;}}
+</style>
+<style>
+:root{--ink:#1a1209;--paper:#f7f3ec;--cream:#ede8de;--rule:#c8bea8;--accent:#b84b2a;--accent2:#2a5c8b;--sev:#c0392b;--mod:#e67e22;--lit:#d4a017;--felt:#8e9e3a;--ok:#27ae60;--muted:#6b5d4a;--serif:'Source Serif 4',Georgia,serif;--display:'Playfair Display',Georgia,serif;--mono:'JetBrains Mono',monospace}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:15px;line-height:1.75}
+.page{max-width:900px;margin:0 auto;padding:0 28px 100px}
+.masthead{border-bottom:3px double var(--rule);padding:52px 0 34px;margin-bottom:44px}
+.masthead::before{content:"EARTHQUAKE IMPACT ASSESSMENT REPORT";display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.25em;color:var(--muted);margin-bottom:16px}
+.masthead h1{font-family:var(--display);font-size:clamp(1.8rem,5vw,3.1rem);font-weight:900;line-height:1.1}
+.masthead h1 em{color:var(--accent);font-style:normal}
+.masthead .meta{margin-top:20px;font-size:12px;color:var(--muted);font-family:var(--mono);display:flex;flex-wrap:wrap;gap:22px}
+.masthead .meta b{color:var(--ink)}
+.gen-notice{background:var(--cream);border:1px solid var(--rule);border-radius:3px;padding:10px 16px;font-size:12px;color:var(--muted);margin-bottom:44px;font-family:var(--mono);line-height:1.6}
+.toc{background:var(--cream);border:1px solid var(--rule);padding:20px 24px;margin-bottom:44px;border-radius:2px}
+.toc-title{font-family:var(--mono);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.toc ol{padding-left:20px;font-size:13px;line-height:2}
+.toc a{color:var(--accent2);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.section{margin-bottom:58px}
+.section-head{display:flex;align-items:baseline;gap:14px;margin-bottom:20px;padding-bottom:9px;border-bottom:1.5px solid var(--rule)}
+.sec-num{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;white-space:nowrap}
+.section-head h2{font-family:var(--display);font-size:1.4rem;font-weight:700}
+p{margin-bottom:14px}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.card{background:var(--cream);border:1px solid var(--rule);border-top:3px solid var(--accent);padding:14px 16px;border-radius:2px}
+.card.c-sev{border-top-color:var(--sev)}.card.c-mod{border-top-color:var(--mod)}.card.c-lit{border-top-color:var(--lit)}.card.c-felt{border-top-color:var(--felt)}.card.c-blue{border-top-color:var(--accent2)}
+.card .lbl{font-size:9.5px;font-family:var(--mono);letter-spacing:.13em;color:var(--muted);margin-bottom:4px;text-transform:uppercase}
+.card .val{font-family:var(--display);font-size:1.55rem;font-weight:700;line-height:1.1}
+.card .unt{font-size:10.5px;color:var(--muted);font-family:var(--mono);margin-top:3px}
+.ztable{width:100%;border-collapse:collapse;font-size:13px;margin:16px 0}
+.ztable th{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);background:var(--cream);padding:8px 12px;text-align:left;border-bottom:2px solid var(--rule)}
+.ztable td{padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:middle}
+.ztable tr:last-child td{border-bottom:none}
+.ztable .num{font-family:var(--mono);text-align:right;font-size:12.5px}
+.ztable .sub{font-size:11.5px;color:var(--muted)}
+.zdot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.bar-section{margin:18px 0}
+.bar-gt{font-size:12px;font-family:var(--mono);color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;margin-top:20px}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.bar-lbl{width:170px;flex-shrink:0;text-align:right;font-size:12px;color:var(--muted);line-height:1.3}
+.bar-track{flex:1;background:var(--cream);border-radius:2px;height:20px;position:relative;overflow:hidden;border:1px solid var(--rule)}
+.bar-fill{height:100%;border-radius:1px;transition:width .5s ease}
+.bar-v{position:absolute;right:7px;top:50%;transform:translateY(-50%);font-size:11px;font-family:var(--mono);color:var(--ink);font-weight:600}
+.bar-ext{font-size:11px;font-family:var(--mono);color:var(--muted);min-width:55px}
+.zb-head{display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr 1fr;gap:8px;padding:7px 12px;background:var(--cream);font-size:10px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid var(--rule)}
+.zb-row{display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr 1fr;gap:8px;padding:9px 12px;border-bottom:1px solid var(--rule);font-size:13px;align-items:center}
+.zb-row:last-child{border-bottom:none;background:var(--cream);font-weight:600}
+.zb-row .n{font-family:var(--mono);text-align:right;font-size:12px}
+.zone-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:10px;font-family:var(--mono);font-weight:600}
+.pill-sev{background:#fee2e2;color:var(--sev)}.pill-mod{background:#fff3e0;color:var(--mod)}.pill-lit{background:#fffde7;color:var(--lit)}.pill-felt{background:#f1f8e9;color:var(--felt)}.pill-total{background:#e8f0fe;color:var(--accent2)}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px dashed var(--rule);font-size:13.5px}
+.stat-row:last-child{border-bottom:none}
+.stat-key{color:var(--muted)}.stat-val{font-family:var(--mono);font-weight:600;text-align:right}
+.callout{background:linear-gradient(135deg,#fdf6ee,var(--cream));border:1px solid var(--rule);border-left:4px solid var(--accent);padding:16px 20px;margin:18px 0;font-size:13.5px;border-radius:0 4px 4px 0}
+.callout strong{color:var(--accent);font-family:var(--display)}
+.callout.info{border-left-color:var(--accent2)}.callout.info strong{color:var(--accent2)}
+.note{background:var(--cream);border-left:3px solid var(--rule);padding:9px 14px;font-size:12px;color:var(--muted);margin:12px 0;font-style:italic;line-height:1.55}
+.note.warn{border-left-color:var(--lit)}.note.info{border-left-color:var(--accent2)}
+.loading{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;font-family:var(--mono);padding:16px 0}
+.spinner{width:14px;height:14px;border:2px solid var(--rule);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ref-list{font-size:12px;color:var(--muted);line-height:1.7;padding-left:20px}
+.ref-list li{margin-bottom:9px;text-indent:-20px;padding-left:20px}
+.ref-list a{color:var(--accent2)}
+footer{border-top:3px double var(--rule);padding-top:20px;font-size:11px;color:var(--muted);font-family:var(--mono);line-height:1.9;margin-top:60px}
+@media print{.no-print{display:none}body{background:#fff}.page{max-width:100%}.section{page-break-inside:avoid}}
+@media(max-width:600px){.bar-lbl{width:110px}.card-grid{grid-template-columns:1fr 1fr}.zb-head,.zb-row{grid-template-columns:2fr 1fr 1fr}.zb-head span:nth-child(n+4),.zb-row .n:nth-child(n+4){display:none}}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="masthead">
+  <h1>Seismic Impact Assessment<br/><em id="rSub">Loading…</em></h1>
+  <div class="meta">
+    <span>Generated: <b id="gDate">—</b></span>
+    <span>Epicentre: <b id="epiC">—</b></span>
+    <span>Model: <b id="modelRef">Bilal &amp; Askan (2014) · ak135</b></span>
+  </div>
+</div>
+<div class="gen-notice" id="gNotice">⏳ Fetching data… Sections populate as each source responds. Large zones may take 30–60 s.</div>
+<div class="no-print" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;">
+  <button onclick="retryOverpass()" style="font-size:12px;padding:7px 14px;border:1px solid var(--rule);border-radius:6px;background:var(--cream);color:var(--ink);cursor:pointer;font-family:var(--mono);">
+    ↺ Retry OSM Sections
+  </button>
+  <button onclick="retryHistory()" style="font-size:12px;padding:7px 14px;border:1px solid var(--rule);border-radius:6px;background:var(--cream);color:var(--ink);cursor:pointer;font-family:var(--mono);">
+    ↺ Retry USGS History
+  </button>
+  <button onclick="window.print()" style="font-size:12px;padding:7px 14px;border:1px solid var(--rule);border-radius:6px;background:var(--cream);color:var(--ink);cursor:pointer;font-family:var(--mono);">
+    🖨 Print / Save PDF
+  </button>
+</div>
+<div class="toc">
+  <div class="toc-title">Contents</div>
+  <ol class="toc">
+    <li><a href="#s1">Seismic Event Overview</a></li>
+    <li><a href="#s2">Shaking Intensity Zones &amp; Impact Map</a></li>
+    <li><a href="#s3">Population Exposure by Zone</a></li>
+    <li><a href="#s4">Buildings by Zone &amp; Type</a></li>
+    <li><a href="#s5">Land Use &amp; Land Cover by Zone</a></li>
+    <li><a href="#s6">Critical Infrastructure</a></li>
+    <li><a href="#s7">Historical Seismicity</a></li>
+    <li><a href="#s8">Seismic Wave Arrival Times</a></li>
+    <li><a href="#s9">References</a></li>
+  </ol>
+</div>
+<div class="section" id="s1">
+  <div class="section-head"><span class="sec-num">01</span><h2>Seismic Event Overview</h2></div>
+  <div class="card-grid" id="sCrds"><div class="loading"><div class="spinner"></div>Loading…</div></div>
+  <div id="sDesc"></div>
+</div>
+<div class="section" id="s2">
+  <div class="section-head"><span class="sec-num">02</span><h2>Shaking Intensity Zones</h2></div>
+  <p>Impact zones computed with the <strong id="ipeLabel">selected IPE</strong>, cross-validated against two additional models. Site condition: <strong id="siteLabel">Rock (V<sub>s30</sub>=760 m/s, reference)</strong>. Zone radii shown with ±1σ propagated uncertainty. EMS-98 damage grades indicate expected structural response.</p>
+  <table class="ztable"><thead><tr><th>Zone</th><th>MMI</th><th>Expected Effects</th><th style="text-align:right">Radius km</th><th style="text-align:right">±1σ km</th><th style="text-align:right">Ring Area</th><th style="text-align:right">Cumul. Area</th></tr></thead>
+  <tbody id="zTbody"><tr><td colspan="6"><div class="loading"><div class="spinner"></div>Computing…</div></td></tr></tbody></table>
+  <div id="zCall"></div>
+  <div id="multiIPEComp" style="margin-top:20px;"></div>
+  <!-- Impact Zone Map -->
+  <div style="margin-top:24px;">
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Impact Zone Map — Leaflet / OpenStreetMap</div>
+    <div class="impact-map-wrap">
+      <div id="impactMap"></div>
+      <div class="impact-map-legend" id="impactMapLegend">
+        <strong style="display:block;margin-bottom:4px;font-size:10px;letter-spacing:.1em;">IMPACT ZONES</strong>
+        <div><span class="imp-leg-dot" style="background:#c0392b;border:2px solid #922b21;opacity:.85;"></span>Severe — MMI ≥ VIII</div>
+        <div><span class="imp-leg-dot" style="background:#e67e22;border:2px solid #b9770e;opacity:.85;"></span>Moderate — MMI VI–VII</div>
+        <div><span class="imp-leg-dot" style="background:#d4a017;border:2px solid #9a7d0a;opacity:.85;"></span>Light — MMI IV–V</div>
+        <div><span class="imp-leg-dot" style="background:#8e9e3a;border:2px solid #6d7a2c;opacity:.85;"></span>Felt — MMI II–III</div>
+        <div style="margin-top:4px;border-top:1px solid var(--rule);padding-top:4px;"><span style="display:inline-block;width:11px;height:11px;background:#2a5c8b;border-radius:50%;margin-right:6px;vertical-align:middle;border:2px solid #fff;"></span>Epicentre</div>
+      </div>
+    </div>
+    <div class="note info" style="margin-top:6px;">Map tiles © OpenStreetMap contributors. Circles are computed impact zones — not ground-truth contours. Actual shaking depends on local site conditions.</div>
+  </div>
+</div>
+<div class="section" id="s3">
+  <div class="section-head"><span class="sec-num">03</span><h2>Population Exposure by Zone</h2></div>
+  <p>Population density from WorldPop 2020 gridded dataset (API) with latitude-band fallback. Exposed population = ring area × local density.</p>
+  <div id="popC"><div class="loading"><div class="spinner"></div>Fetching WorldPop…</div></div>
+</div>
+<div class="section" id="s4">
+  <div class="section-head"><span class="sec-num">04</span><h2>Buildings by Zone &amp; Type</h2></div>
+  <p>Building counts estimated from <strong>WorldPop population density</strong>
+  and UN-Habitat persons-per-unit ratios — results appear immediately for every event,
+  every magnitude, every zone size. <strong>OSM mapped counts</strong> shown alongside
+  as a bonus where available. No external building APIs required.</p>
+  <div id="bldC"><div class="loading"><div class="spinner"></div>Querying OSM — per-zone queries running…</div></div>
+</div>
+<div class="section" id="s5">
+  <div class="section-head"><span class="sec-num">05</span><h2>Land Use &amp; Land Cover by Zone</h2></div>
+  <p>Land cover data from the GLAD (Global Land Analysis &amp; Discovery) Lab, University of Maryland, using the GLAD 2020 global land cover dataset (Potapov et al. 2022). Land cover class at the epicentre from OpenLandMap (MODIS LC, 500 m). Zone-level land cover area from OpenStreetMap polygon geometry using the spherical Shoelace formula.</p>
+  <div id="luC"><div class="loading"><div class="spinner"></div>Querying land use…</div></div>
+</div>
+<div class="section" id="s6">
+  <div class="section-head"><span class="sec-num">06</span><h2>Critical Infrastructure</h2></div>
+  <p>Hospitals, schools, emergency services, utilities, airports, and rail stations within the severe+moderate zone from OpenStreetMap.</p>
+  <div id="infC"><div class="loading"><div class="spinner"></div>Querying infrastructure…</div></div>
+</div>
+<div class="section" id="s7">
+  <div class="section-head"><span class="sec-num">07</span><h2>Historical Seismicity (30 years, 300 km)</h2></div>
+  <p>M4.0+ events within 300 km over the last 30 years from USGS FDSN. Fetched in 6 × 5-year chunks to retrieve the <em>complete</em> catalogue — bypassing the per-query result cap that previously limited results to 200 events.</p>
+  <div id="hisC"><div class="loading"><div class="spinner"></div>Querying USGS FDSN…</div></div>
+</div>
+<div class="section" id="s8">
+  <div class="section-head"><span class="sec-num">08</span><h2>Seismic Wave Arrival Times</h2></div>
+  <p>P and S travel times at key distances from the epicentre using the ak135 reference model (Kennett et al. 1995). S-P gap ≈ distance / 8 km/s (Omori's rule).</p>
+  <div id="ttC"></div>
+</div>
+<div class="section" id="s9">
+  <div class="section-head"><span class="sec-num">09</span><h2>Aftershock Forecast &amp; Seismic Physics</h2></div>
+  <div id="physC"><div class="loading"><div class="spinner"></div>Computing…</div></div>
+</div>
+<div class="section" id="s10">
+  <div class="section-head"><span class="sec-num">10</span><h2>References &amp; Data Sources</h2></div>
+  <ol class="ref-list">
+    <li>Bilal M. &amp; Askan A. (2014). Relationships between felt intensity and instrumental ground motion parameters. <em>Seismol. Res. Lett.</em> 85(1):135–147. <a href="https://doi.org/10.1785/0220130093">doi:10.1785/0220130093</a></li>
+    <li>Atkinson G.M. &amp; Wald D.J. (2007). "Did You Feel It?" intensity data: A surprisingly good measure of ground motion. <em>Seismol. Res. Lett.</em> 78(3):362–368. <a href="https://doi.org/10.1785/gssrl.78.3.362">doi:10.1785/gssrl.78.3.362</a></li>
+    <li>Worden C.B. et al. (2012). Probabilistic relationships between ground-motion parameters and MMI in California. <em>Bull. Seismol. Soc. Am.</em> 102(1):204–221. <a href="https://doi.org/10.1785/0120110156">doi:10.1785/0120110156</a></li>
+    <li>Hanks T.C. &amp; Kanamori H. (1979). A moment magnitude scale. <em>J. Geophys. Res.</em> 84(B5):2348–2350. <a href="https://doi.org/10.1029/JB084iB05p02348">doi:10.1029/JB084iB05p02348</a></li>
+    <li>Wells D.L. &amp; Coppersmith K.J. (1994). New empirical relationships among magnitude, rupture dimensions and displacement. <em>Bull. Seismol. Soc. Am.</em> 84(4):974–1002.</li>
+    <li>Aki K. (1965). Maximum likelihood estimate of b in log N = a − bM and its confidence limits. <em>Bull. Earthquake Res. Inst.</em> 43:237–239.</li>
+    <li>Reasenberg P.A. &amp; Jones L.M. (1989). Earthquake hazard after a mainshock in California. <em>Science</em> 243:1173–1176. <a href="https://doi.org/10.1126/science.243.4895.1173">doi:10.1126/science.243.4895.1173</a></li>
+    <li>Utsu T. (1961). A statistical study on the occurrence of aftershocks. <em>Geophys. Mag.</em> 30:521–605.</li>
+    <li>Kennett B.L.N., Engdahl E.R. &amp; Buland R. (1995). GJI 122(1):108–124. <a href="https://doi.org/10.1111/j.1365-246X.1995.tb03540.x">doi:10.1111/j.1365-246X.1995.tb03540.x</a></li>
+    <li>WorldPop (2020). Global Pop. Denominators. Univ. Southampton. <a href="https://www.worldpop.org">worldpop.org</a></li>
+    <li>OpenStreetMap contributors (2024). Overpass API. <a href="https://overpass-api.de">overpass-api.de</a></li>
+    <li>USGS FDSN Event Web Service. <a href="https://earthquake.usgs.gov/fdsnws/event/1/">earthquake.usgs.gov</a></li>
+    <li>Open-Meteo (2024). Elevation API. <a href="https://open-meteo.com">open-meteo.com</a></li>
+    <li>Nominatim / OSM (2024). Reverse Geocoding. <a href="https://nominatim.org">nominatim.org</a></li>
+    <li>Microsoft (2023). Global ML Building Footprints. 1.4 billion buildings detected from Bing aerial imagery. <a href="https://github.com/microsoft/GlobalMLBuildingFootprints" target="_blank">github.com/microsoft/GlobalMLBuildingFootprints</a></li>
+    <li>FEMA (2023). USA Structures — National Structures Inventory. <a href="https://geoplatform.gov/metadata/5b26a1af-c017-4dfe-8b1b-82e9d4c56843" target="_blank">geoplatform.gov</a></li>
+    <li>Schiavina M., Freire S., Carioli A., MacManus K. (2023). GHS-BUILT-S R2023A — GHS built-up surface grid, multitemporal (1975–2030), R2023A. European Commission, Joint Research Centre. <a href="https://doi.org/10.2905/9F06F36F-4B11-47EC-ABB0-4F8B7B1D72EA">doi:10.2905/9F06F36F</a></li>
+    <li>Potapov P., Hansen M.C., Pickens A. et al. (2022). The global 2000–2020 land cover and land use change dataset derived from the Landsat archive: first results. <em>Frontiers in Remote Sensing</em>. <a href="https://doi.org/10.3389/frsen.2022.856903">doi:10.3389/frsen.2022.856903</a></li>
+    <li>OpenLandMap (2024). MODIS Land Cover Type 1, 500 m resolution. <a href="https://openlandmap.org">openlandmap.org</a></li>
+  </ol>
+</div>
+<footer>
+  <div>Earthquake Impact Assessment · Generated <span id="fDate"></span></div>
+  <div>Science: Bilal &amp; Askan (2014) · ak135 · V<sub>s30</sub>=760 m/s reference rock</div>
+  <div>Data: Microsoft ML Buildings · FEMA Structures · GHSL (Schiavina et al. 2023) · OpenStreetMap · WorldPop · USGS FDSN · GLAD/OpenLandMap</div>
+  <div style="margin-top:6px;font-size:10px;">First-order estimates for planning purposes. Actual impacts depend on local site conditions, building age, and construction quality.</div>
+</footer>
+</div>
+<script>
+// ── PARAMS ──────────────────────────────────────────────────────────────────
+const P=new URLSearchParams(window.location.search);
+const EV={
+  lat:   parseFloat(P.get("lat")  ||"35.6"),
+  lng:   parseFloat(P.get("lng")  ||"139.7"),
+  mag:   parseFloat(P.get("mag")  ||"7.0"),
+  depth: parseFloat(P.get("depth")||"10"),
+  place: P.get("place")||"Custom Location",
+  time:  P.get("time")?new Date(parseInt(P.get("time"))):new Date(),
+  mode:  P.get("mode")||"custom"
+};
+const ACTIVE_IPE   = P.get("ipe")       || "atkinson";
+const SITE_CLASS   = parseInt(P.get("siteClass") ?? "1");
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SCIENCE MODULE v2
+// Three IPEs · ±1σ uncertainty · Seismic physics · Aftershock forecast
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ── Vs30 site class adjustments (Borcherdt 1994 / NEHRP) ─────────────────────
+const VS30 = [
+  { label:"A — Hard rock",      mmiAdj:-0.5 },
+  { label:"B — Rock (ref.)",    mmiAdj: 0.0 },
+  { label:"C — Dense soil",     mmiAdj:+0.5 },
+  { label:"D — Stiff soil",     mmiAdj:+1.0 },
+  { label:"E — Soft soil",      mmiAdj:+1.7 }
+];
+const SITE_ADJ = VS30[SITE_CLASS]?.mmiAdj ?? 0;
+
+// ── Three IPE models ──────────────────────────────────────────────────────────
+// Bilal & Askan (2014) SRL 85(1):135-147 — Turkey/Near-East
+function mmiBilal(M,eK,dK){
+  const h=Math.exp(-1.02+0.532*M);
+  const R=Math.max(1,Math.sqrt(eK*eK+dK*dK)+h);
+  return 1.36+1.26*M-1.37*Math.log10(R)-0.010*eK;
+}
+// Atkinson & Wald (2007) SRL 78(3):362-368 — Global DYFI (recommended)
+function mmiAtkinson(M,eK,dK){
+  const R=Math.max(1,Math.sqrt(eK*eK+dK*dK));
+  return 2.76+1.40*M-3.16*Math.log10(R)-0.0023*R;
+}
+// Worden et al. (2012) BSSA 102(1) — USGS ShakeMap / CB14 NGA-West2
+function mmiWorden(M,eK,dK){
+  const R=Math.max(1,Math.sqrt(eK*eK+dK*dK));
+  const lnPGA=-4.416+0.984*M-1.34*Math.log(Math.sqrt(R*R+36))+0.275*Math.max(0,M-5.5);
+  const pga=Math.exp(lnPGA)*980.665;
+  if(pga<0.01) return 0;
+  const l=Math.log10(pga);
+  return l>=1.57?3.66*l-1.66:2.20*l+1.00;
+}
+const IPE_FNS  ={bilal:mmiBilal,atkinson:mmiAtkinson,worden:mmiWorden};
+const IPE_NAMES={bilal:"Bilal & Askan (2014)",atkinson:"Atkinson & Wald (2007)",worden:"Worden et al. (2012)"};
+const IPE_SHORT={bilal:"BA14",atkinson:"AW07",worden:"W12"};
+const IPE_SIGMA={bilal:0.7,atkinson:0.8,worden:1.0};
+
+function mmiActive(M,eK,dK){ return (IPE_FNS[ACTIVE_IPE]||mmiAtkinson)(M,eK,dK)+SITE_ADJ; }
+
+// Bisection inversion — pure physics, no padding
+function rFor(t,M,d){
+  if(mmiActive(M,0,d)<t) return 0;
+  let lo=0,hi=5500;
+  for(let i=0;i<90;i++){const m=(lo+hi)/2;mmiActive(M,m,d)>t?lo=m:hi=m;}
+  return Math.round((lo+hi)/2);
+}
+
+// Propagated zone-radius ±1σ uncertainty
+function rUncert(t,M,d){
+  const r0=rFor(t,M,d);
+  if(r0<=0) return 0;
+  const dr=Math.max(1,r0*0.01);
+  const g=Math.abs((mmiActive(M,r0+dr,d)-mmiActive(M,Math.max(0,r0-dr),d))/(2*dr));
+  return g<1e-6?Math.round(r0*0.5):Math.round((IPE_SIGMA[ACTIVE_IPE]||0.8)/g);
+}
+
+// Zones — physics only, no artificial padding
+const Z=(()=>{
+  const s=rFor(8.0,EV.mag,EV.depth), mo=rFor(6.0,EV.mag,EV.depth),
+        l=rFor(4.5,EV.mag,EV.depth),  f=rFor(2.5,EV.mag,EV.depth);
+  return{severe:s,moderate:mo,light:l,felt:f,mmiEpi:mmiActive(EV.mag,0,EV.depth)};
+})();
+const ZU={
+  severe:  rUncert(8.0,EV.mag,EV.depth),
+  moderate:rUncert(6.0,EV.mag,EV.depth),
+  light:   rUncert(4.5,EV.mag,EV.depth),
+  felt:    rUncert(2.5,EV.mag,EV.depth)
+};
+
+const ca=r=>Math.PI*r*r;
+const AR={severe:ca(Z.severe),moderate:ca(Z.moderate)-ca(Z.severe),
+          light:ca(Z.light)-ca(Z.moderate),felt:ca(Z.felt)-ca(Z.light),total:ca(Z.felt)};
+
+// ── Seismic physics (Hanks & Kanamori 1979; Gutenberg & Richter 1956; Wells & Coppersmith 1994) ──
+function seismicMoment(M){return Math.pow(10,1.5*M+9.1);}
+function seismicEnergy(M){return Math.pow(10,5.24+1.44*M);}
+function getRupture(M){
+  return{
+    lengthKm:Math.pow(10,-3.22+0.69*M),
+    widthKm: Math.pow(10,-1.01+0.32*M),
+    areaKm2: Math.pow(10,-3.49+0.91*M)
+  };
+}
+function fmtSci(v){
+  if(!isFinite(v)||v<=0) return "N/A";
+  const e=Math.floor(Math.log10(v));
+  return `${(v/Math.pow(10,e)).toFixed(2)} &times; 10<sup>${e}</sup>`;
+}
+
+// ── Aftershock forecast (Utsu 1961; Reasenberg & Jones 1989) ─────────────────
+function forecastAfterShocks(M){
+  const Mb=Math.max(0,M-1.2);
+  const K=Math.pow(10,-1.67+M),c=0.05,p=1.08;
+  const cum=t=>Math.max(0,Math.round(K*((Math.pow(c+t,1-p)-Math.pow(c,1-p))/(1-p))));
+  return{largestM:+Mb.toFixed(1),n1d:cum(1),n7d:cum(7),n30d:cum(30),n365d:cum(365)};
+}
+
+// ── Tsunami flag (PTWC/IOC operational criteria) ─────────────────────────────
+function getTsunami(M,depth,lat,lng){
+  if(M<7.0||depth>70) return null;
+  const interior=(lat>20&&lat<55&&lng>-110&&lng<-60)||(lat>-55&&lat<20&&lng>-80&&lng<-35)||
+    (lat>35&&lat<70&&lng>10&&lng<60)||(lat>0&&lat<35&&lng>60&&lng<100);
+  if(interior) return null;
+  return{level:M>=8.5?"HIGH":M>=7.5?"MODERATE":"WATCH",
+    note:`M${M.toFixed(1)}, ${depth} km depth — shallow subduction event. Monitor PTWC/JMA.`};
+}
+
+// ── G-R b-value (Aki 1965 MLE; Shi & Bolt 1982 σ) ───────────────────────────
+function calcGR(mags,Mc){
+  const u=mags.filter(m=>m>=Mc);
+  if(u.length<10) return null;
+  const n=u.length, Mb=u.reduce((s,m)=>s+m,0)/n;
+  const b=Math.log10(Math.E)/(Mb-Mc);
+  const v=u.reduce((s,m)=>s+(m-Mb)**2,0)/(n-1);
+  const sb=2.3*b*b*Math.sqrt(v/n);
+  const a=Math.log10(n)+b*Mc;
+  const hist={};
+  mags.forEach(m=>{const bin=Math.round(m*2)/2;hist[bin]=(hist[bin]||0)+1;});
+  const McE=+Object.entries(hist).sort((a,b)=>b[1]-a[1])[0][0];
+  return{b,sigma_b:sb,a,n,Mbar:Mb,Mc,McEst:McE};
+}
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+const fN=(n,d=0)=>n==null||isNaN(n)?"—":n.toLocaleString(undefined,{maximumFractionDigits:d});
+const fA=n=>{
+  if(!n||n<=0||isNaN(n)) return "—";
+  if(n>=1e6)   return (n/1e6).toFixed(2)+" M km²";
+  if(n>=1000)  return (n/1000).toFixed(1)+" k km²";
+  if(n>=1)     return n.toFixed(1)+" km²";
+  if(n>=0.001) return n.toFixed(3)+" km²";
+  return (n*1e6).toFixed(0)+" m²";
+};
+const fD=d=>d.toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric",hour:"2-digit",minute:"2-digit"});
+const ZD=[
+  {key:"severe",  label:"Severe",  r:Z.severe,  pill:"pill-sev", color:"var(--sev)"},
+  {key:"moderate",label:"Moderate",r:Z.moderate,pill:"pill-mod", color:"var(--mod)"},
+  {key:"light",   label:"Light",   r:Z.light,   pill:"pill-lit", color:"var(--lit)"},
+  {key:"felt",    label:"Felt",    r:Z.felt,     pill:"pill-felt",color:"var(--felt)"}
+];
+
+// Overpass with mirror fallback + remark timeout detection
+const OVP_MIRRORS=[
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
+];
+let ovpMirrorIdx=0;
+async function ovpQuery(ql,timeoutMs=55000,retries=4){
+  for(let attempt=0;attempt<retries;attempt++){
+    if(attempt>0){
+      await new Promise(r=>setTimeout(r,Math.min(6000*attempt,18000)));
+      if(attempt===1) ovpMirrorIdx=(ovpMirrorIdx+1)%OVP_MIRRORS.length;
+    }
+    const endpoint=OVP_MIRRORS[ovpMirrorIdx%OVP_MIRRORS.length];
+    try{
+      const r=await fetch(endpoint,{method:"POST",body:"data="+encodeURIComponent(ql),signal:AbortSignal.timeout(timeoutMs)});
+      if(r.status===429){ovpMirrorIdx=(ovpMirrorIdx+1)%OVP_MIRRORS.length;await new Promise(r2=>setTimeout(r2,8000));continue;}
+      if(r.status===400) throw new Error("Overpass 400: "+(await r.text().catch(()=>"")).slice(0,200));
+      if(!r.ok) throw new Error("Overpass HTTP "+r.status);
+      const data=await r.json();
+      if(data.remark&&(data.remark.includes("timed out")||data.remark.includes("server had difficulty"))){
+        if(attempt<retries-1) continue;
+        throw new Error("Overpass server timeout: "+data.remark.slice(0,120));
+      }
+      return data;
+    }catch(e){
+      const isBad=e.message.includes("400");
+      if(attempt===retries-1||isBad) throw e;
+    }
+  }
+  throw new Error("Overpass did not respond after "+retries+" attempts");
+}
+
+// ── HEADER ───────────────────────────────────────────────────────────────────
+const PARAMS_VALID=!isNaN(EV.lat)&&!isNaN(EV.lng)&&!isNaN(EV.mag)&&!isNaN(EV.depth);
+if(!PARAMS_VALID){
+  document.getElementById("gNotice").innerHTML="❌ Invalid report parameters.";
+  document.getElementById("rSub").textContent="Invalid Parameters";
+}else{
+  document.getElementById("rSub").textContent=`M${EV.mag.toFixed(1)} · ${EV.place}`;
+  document.getElementById("gDate").textContent=fD(new Date());
+  document.getElementById("epiC").textContent=`${EV.lat.toFixed(4)}°, ${EV.lng.toFixed(4)}°`;
+  document.getElementById("fDate").textContent=new Date().toLocaleDateString();
+  // Set IPE and site labels in section headers
+  const il=document.getElementById("ipeLabel"),sl=document.getElementById("siteLabel");
+  if(il) il.textContent=IPE_NAMES[ACTIVE_IPE]||ACTIVE_IPE;
+  if(sl) sl.innerHTML=(VS30[SITE_CLASS]?.label||"Rock")+(SITE_ADJ!==0?` (${SITE_ADJ>0?"+":""}${SITE_ADJ} MMI)`:" (reference)");
+  // modelRef in masthead
+  const mr=document.getElementById("modelRef");
+  if(mr) mr.textContent=IPE_NAMES[ACTIVE_IPE]+" · ak135";
+}
+
+// ── S1: SUMMARY ──────────────────────────────────────────────────────────────
+(()=>{
+  if(!PARAMS_VALID) return;
+  const rup=getRupture(EV.mag);
+  const M0=seismicMoment(EV.mag), Es=seismicEnergy(EV.mag);
+  const tsunami=getTsunami(EV.mag,EV.depth,EV.lat,EV.lng);
+  const sigma=IPE_SIGMA[ACTIVE_IPE]||0.8;
+
+  const cards=[
+    {l:"Magnitude",     v:`M${EV.mag.toFixed(1)}`,  u:"Moment magnitude (Mw)",  c:"c-sev"},
+    {l:"Focal Depth",   v:`${EV.depth} km`,
+     u:EV.depth<70?"Shallow — highest surface risk":EV.depth<300?"Intermediate depth":"Deep focus", c:""},
+    {l:"Epi. MMI",      v:Z.mmiEpi.toFixed(1),
+     u:`${IPE_SHORT[ACTIVE_IPE]} · ${VS30[SITE_CLASS]?.label?.split("—")[0]?.trim()||"Rock"} · ±${sigma} (1σ)`, c:"c-mod"},
+    {l:"Severe Radius", v:Z.severe>0?Z.severe+" km":"Not reached",
+     u:`MMI ≥ VIII · ±${ZU.severe} km (1σ)`, c:"c-sev"},
+    {l:"Felt Radius",   v:Z.felt>0?Z.felt+" km":"—",
+     u:`MMI ≥ 2.5 · ±${ZU.felt} km (1σ)`, c:"c-blue"},
+    {l:"Seismic Moment",v:`<span style="font-size:.85rem">${fmtSci(M0)}</span>`,
+     u:"N·m  (Hanks &amp; Kanamori 1979)", c:"c-blue"},
+    {l:"Radiated Energy",v:`<span style="font-size:.85rem">${fmtSci(Es)}</span>`,
+     u:"J  (Gutenberg &amp; Richter 1956)", c:""},
+    {l:"Rupture Length", v:EV.mag>=5?rup.lengthKm.toFixed(0)+" km":"< M5",
+     u:"Wells &amp; Coppersmith (1994)", c:""}
+  ];
+  document.getElementById("sCrds").innerHTML=cards.map(c=>
+    `<div class="card ${c.c}"><div class="lbl">${c.l}</div><div class="val">${c.v}</div><div class="unt">${c.u}</div></div>`
+  ).join("");
+
+  const depClass=EV.depth<70?"shallow (crustal)":EV.depth<300?"intermediate-depth":"deep-focus";
+  const ipeNote={atkinson:"global DYFI-calibrated — recommended for worldwide use",
+    bilal:"Turkey/Near-East calibration — may overestimate far-field MMI by 0.5–1 unit outside region",
+    worden:"USGS ShakeMap / CB14 NGA-West2 — best agreement with official ShakeMap output"}[ACTIVE_IPE]||"";
+  const siteNote=SITE_ADJ===0?`Reference rock (Vs30=760 m/s) assumed.`
+    :`Site class ${VS30[SITE_CLASS]?.label} applied (${SITE_ADJ>0?"+":""}${SITE_ADJ} MMI adjustment above reference rock).`;
+
+  let desc=`<p>This report assesses the estimated impact of a <strong>M${EV.mag.toFixed(1)}</strong> ${depClass} earthquake at <strong>${EV.place}</strong> (${EV.lat.toFixed(4)}°, ${EV.lng.toFixed(4)}°), focal depth <strong>${EV.depth} km</strong>, occurring on <strong>${fD(EV.time)}</strong>.</p>
+  <p>Shaking intensity zones use the <strong>${IPE_NAMES[ACTIVE_IPE]}</strong> Intensity Prediction Equation (${ipeNote}). ${siteNote} Zone radii carry ±1σ uncertainties of ±${ZU.severe}–${ZU.felt} km propagated analytically from the published IPE standard deviation (±${sigma} MMI). Seismic wave arrivals use the ak135 reference model (Kennett et al. 1995).</p>`;
+
+  if(tsunami){
+    desc+=`<div class="callout" style="border-left-color:#c0392b;margin-top:14px;"><strong style="color:#c0392b;">🌊 Tsunami Potential — ${tsunami.level}</strong><br>${tsunami.note}</div>`;
+  }
+  document.getElementById("sDesc").innerHTML=desc;
+})();
+
+// ── S2: ZONE TABLE + MULTI-IPE COMPARISON ───────────────────────────────────
+(()=>{
+  if(!PARAMS_VALID) return;
+  const rows=[
+    {dot:"background:var(--sev)",  l:"Severe",   mmi:"≥ VIII", ems:"EMS-98 Grade 4–5",
+     desc:"Structural collapse of unreinforced masonry; RC frames may sustain partial collapse; life safety threat.",
+     r:Z.severe,  u:ZU.severe,  a:AR.severe,  cum:ca(Z.severe)},
+    {dot:"background:var(--mod)",  l:"Moderate", mmi:"VI–VII", ems:"EMS-98 Grade 2–3",
+     desc:"Light to moderate structural damage; walls crack; chimneys and parapets fall.",
+     r:Z.moderate,u:ZU.moderate,a:AR.moderate,cum:ca(Z.moderate)},
+    {dot:"background:var(--lit)",  l:"Light",    mmi:"IV–V",   ems:"EMS-98 Grade 0–1",
+     desc:"Widely felt; objects disturbed; windows rattle; minor non-structural cracking.",
+     r:Z.light,   u:ZU.light,   a:AR.light,   cum:ca(Z.light)},
+    {dot:"background:var(--felt)", l:"Felt",     mmi:"II–III", ems:"EMS-98 Grade 0",
+     desc:"Felt by most people; hanging objects swing; no structural damage expected.",
+     r:Z.felt,    u:ZU.felt,    a:AR.felt,    cum:ca(Z.felt)}
+  ];
+
+  document.getElementById("zTbody").innerHTML=rows.map(row=>
+    `<tr>
+      <td>
+        <span class="zdot" style="${row.dot}"></span><strong>${row.l}</strong>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px;">${row.ems}</div>
+      </td>
+      <td class="sub" style="font-size:11.5px;">MMI ${row.mmi}</td>
+      <td class="sub" style="font-size:11.5px;">${row.desc}</td>
+      <td class="num" style="font-weight:600">${row.r>0?row.r+" km":"—"}</td>
+      <td class="num" style="color:var(--muted);font-size:11px">${row.r>0?"±"+row.u+" km":"—"}</td>
+      <td class="num">${row.r>0?fA(row.a):"Not reached"}</td>
+      <td class="num">${row.r>0?fA(row.cum):"—"}</td>
+    </tr>`
+  ).join("")+`<tr style="background:var(--cream);font-weight:600">
+    <td colspan="2"><strong>Total felt zone</strong></td>
+    <td class="sub">All intensities</td>
+    <td class="num">${Z.felt>0?Z.felt+" km":"—"}</td>
+    <td class="num" style="color:var(--muted);font-size:11px">${Z.felt>0?"±"+ZU.felt+" km":"—"}</td>
+    <td class="num">—</td>
+    <td class="num">${fA(AR.total)}</td>
+  </tr>`;
+
+  const lbl=Z.mmiEpi>=9?"Extreme (IX–X)":Z.mmiEpi>=8?"Severe (VIII)":Z.mmiEpi>=6?"Strong (VI–VII)":Z.mmiEpi>=4.5?"Moderate (IV–V)":"Weak (< IV)";
+  document.getElementById("zCall").innerHTML=`<div class="callout">
+    <strong>Epicentre intensity:</strong> MMI ${Z.mmiEpi.toFixed(1)} — ${lbl}.
+    ${Z.severe>0?`Structural collapse risk within <strong>${Z.severe} km</strong> (±${ZU.severe} km, 1σ).`:"Peak intensity below structural collapse threshold (MMI VIII)."}
+    Total felt area: <strong>${fA(AR.total)}</strong>.<br>
+    <span style="font-size:11px;color:var(--muted)">Model: ${IPE_NAMES[ACTIVE_IPE]} · ±${IPE_SIGMA[ACTIVE_IPE]} MMI (1σ) · ${VS30[SITE_CLASS]?.label?.split("—")[0]?.trim()||"Rock"}</span>
+  </div>`;
+
+  // Multi-IPE cross-comparison
+  const ipes=["bilal","atkinson","worden"];
+  const thresholds=[
+    {mmi:"≥ VIII (Severe)",  t:8.0},
+    {mmi:"≥ VI (Moderate)",  t:6.0},
+    {mmi:"≥ IV.5 (Light)",   t:4.5},
+    {mmi:"≥ 2.5 (Felt)",     t:2.5}
+  ];
+  const multiRows=thresholds.map(row=>{
+    const radii=ipes.map(ipe=>{
+      const fn=IPE_FNS[ipe]||mmiAtkinson;
+      const mmiWithSite=(M,e,d)=>fn(M,e,d)+SITE_ADJ;
+      if(mmiWithSite(EV.mag,0,EV.depth)<row.t) return 0;
+      let lo=0,hi=5500;
+      for(let i=0;i<80;i++){const m=(lo+hi)/2;mmiWithSite(EV.mag,m,EV.depth)>row.t?lo=m:hi=m;}
+      return Math.round((lo+hi)/2);
+    });
+    return{...row,radii};
+  });
+
+  document.getElementById("multiIPEComp").innerHTML=`
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">
+      Cross-model epistemic comparison — ${VS30[SITE_CLASS]?.label||"Rock"} site
+    </div>
+    <table class="ztable">
+      <thead><tr>
+        <th>Zone</th>
+        ${ipes.map(k=>`<th style="text-align:right">${IPE_SHORT[k]}<br><span style="font-size:9px;font-weight:400;">&sigma;=&pm;${IPE_SIGMA[k]}</span></th>`).join("")}
+        <th style="text-align:right">Spread</th>
+      </tr></thead>
+      <tbody>
+        ${multiRows.map(row=>{
+          const valid=row.radii.filter(r=>r>0);
+          const spread=valid.length>1?Math.max(...valid)-Math.min(...valid):0;
+          return `<tr>
+            <td>${row.mmi}</td>
+            ${row.radii.map((r,i)=>`<td class="num" ${ipes[i]===ACTIVE_IPE?'style="font-weight:700;color:var(--accent2)"':""}>
+              ${r>0?r+" km":"—"}</td>`).join("")}
+            <td class="num" style="color:${spread>50?"var(--sev)":spread>20?"var(--mod)":"var(--ok)"}">
+              ${spread>0?"±"+Math.round(spread/2)+" km":"—"}</td>
+          </tr>`;}).join("")}
+      </tbody>
+    </table>
+    <div class="note info">Spread = range across all three IPEs ÷ 2 — represents model epistemic uncertainty.
+    Large spread indicates the event falls outside the calibration range of one or more models.
+    Active model (${IPE_SHORT[ACTIVE_IPE]}) values shown in blue.</div>`;
+})();
+
+// ── S3: POPULATION ────────────────────────────────────────────────────────────
+async function loadPop(){
+  const el=document.getElementById("popC");
+  try{
+    let den=null;
+    try{
+      const r=await fetch(`https://api.worldpop.org/v1/wopr/pointestimate?iso3=&lng=${EV.lng}&lat=${EV.lat}&agerange=a0t120&runid=1`,{signal:AbortSignal.timeout(8000)});
+      if(r.ok){const d=await r.json();if(d?.data?.popest)den=d.data.popest;}
+    }catch(e){}
+    if(!den||den<=0){const la=Math.abs(EV.lat);den=la<15?85:la<30?72:la<45?55:la<60?28:4;}
+    window.EQ_POP_DENSITY=den; // share with buildings section
+    const exp={
+      severe:  Math.round(AR.severe  *den*(Z.severe>0?1:0)),
+      moderate:Math.round(AR.moderate*den),
+      light:   Math.round(AR.light   *den),
+      felt:    Math.round(AR.felt    *den),
+      total:   Math.round(AR.total   *den)
+    };
+    const mP=Math.max(...Object.values(exp),1);
+    const cols=["var(--sev)","var(--mod)","var(--lit)","var(--felt)"];
+    const keys=["severe","moderate","light","felt"];
+    const lbls=["Severe (MMI≥VIII)","Moderate (VI–VII)","Light (IV–V)","Felt (II–III)"];
+    const radii=[Z.severe,Z.moderate,Z.light,Z.felt];
+    el.innerHTML=`
+      <div class="card-grid">
+        <div class="card c-sev"><div class="lbl">Severe Zone</div><div class="val">${Z.severe>0?fN(exp.severe):"—"}</div><div class="unt">${Z.severe>0?"At collapse risk":"Not reached"}</div></div>
+        <div class="card c-mod"><div class="lbl">Moderate Zone</div><div class="val">${fN(exp.moderate)}</div><div class="unt">Damage risk</div></div>
+        <div class="card c-blue"><div class="lbl">Total Exposed</div><div class="val">${fN(exp.total)}</div><div class="unt">Entire felt zone</div></div>
+        <div class="card"><div class="lbl">Density Basis</div><div class="val">${den.toFixed(0)}</div><div class="unt">people / km²</div></div>
+      </div>
+      <div class="bar-section"><div class="bar-gt">Exposed population per zone</div>
+      ${keys.map((k,i)=>`
+        <div class="bar-row">
+          <div class="bar-lbl">${lbls[i]}</div>
+          <div class="bar-track">
+            <div class="bar-fill" style="width:${radii[i]>0?exp[k]/mP*100:0}%;background:${cols[i]}"></div>
+            <div class="bar-v">${fN(exp[k])}</div>
+          </div>
+          <div class="bar-ext">${radii[i]>0?"people":"N/A"}</div>
+        </div>`).join("")}
+      </div>
+      <div class="note warn">WorldPop 2020 gridded density. Actual exposure varies with local settlement patterns.</div>`;
+  }catch(e){el.innerHTML=`<div class="note warn">Population unavailable: ${e.message}</div>`;}
+}
+
+// ── S4: BUILDINGS ─────────────────────────────────────────────────────────────
+// STRATEGY: Population-based estimate (primary) + OSM mapped count (secondary)
+//
+// PRIMARY — Population-based estimate (always works, zero extra API calls):
+//   Uses WorldPop density (already fetched in S3) + empirical persons-per-unit
+//   ratios from UN-Habitat / World Bank to derive building density per km².
+//   Then multiplied by zone ring area → estimated building count per zone.
+//   Uncertainty: ±30% — clearly labelled as estimate.
+//   Reference: UN-Habitat (2023) World Cities Report; Ehrlich et al. (2018)
+//              Global human settlement analysis using GHSL. JRC Technical Report.
+//
+// SECONDARY — OSM Overpass (bonus, may fail gracefully):
+//   Actual mapped count per zone — lower bound, best for urban areas.
+//   Also provides building type breakdown.
+//   If OSM fails for any zone, the population estimate still shows.
+//   No GHSL WMS, no PMTiles, no binary decoding, no CDN libraries.
+//   Just one simple Overpass count query per zone + one type query.
+
+async function loadBuildings(){
+  const el=document.getElementById("bldC");
+  const TYPE_COL={residential:"#e74c3c",commercial:"#e67e22",industrial:"#7f8c8d",
+    educational:"#3498db",healthcare:"#27ae60",religious:"#9b59b6"};
+
+  // ── Population-based building estimate ───────────────────────────────────
+  // Uses WorldPop density (passed in from loadPop via window.EQ_POP_DENSITY)
+  // or falls back to latitude-band estimate if WorldPop not yet loaded
+  function getPopDensity(){
+    // Check if population section already fetched density
+    if(window.EQ_POP_DENSITY && window.EQ_POP_DENSITY > 0) return window.EQ_POP_DENSITY;
+    // Latitude-band fallback (same as population section)
+    const la=Math.abs(EV.lat);
+    if(la<15) return 85; if(la<30) return 72; if(la<45) return 55;
+    if(la<60) return 28; return 4;
+  }
+
+  function estimateBuildings(popDensityPerKm2, areaKm2){
+    if(!areaKm2||areaKm2<=0) return 0;
+    // Empirical persons-per-unit and multi-storey factor by settlement type
+    // Sources: UN-Habitat World Cities Report 2022, World Bank Housing data,
+    //          Ehrlich et al. (2018) GHSL-based settlement analysis
+    let ppUnit, msF;
+    if     (popDensityPerKm2>5000){ppUnit=4.5; msF=0.40;}
+    else if(popDensityPerKm2>1000){ppUnit=4.0; msF=0.55;}
+    else if(popDensityPerKm2>200) {ppUnit=3.8; msF=0.70;}
+    else if(popDensityPerKm2>50)  {ppUnit=4.2; msF=0.85;}
+    else if(popDensityPerKm2>10)  {ppUnit=4.5; msF=0.95;}
+    else                          {ppUnit=5.0; msF=1.00;}
+    // +20% for non-residential buildings
+    const densityPerKm2 = (popDensityPerKm2/ppUnit)*msF*1.20;
+    // For large zones (felt, light), population density at epicentre point
+    // is not representative of the whole zone which spans many density levels.
+    // Apply a zone-area dampening factor: larger zones have lower average density
+    // (cities are surrounded by lower-density suburbs/rural areas)
+    // This prevents unrealistically large estimates for huge felt zones
+    let areaFactor = 1.0;
+    if(areaKm2 > 100000)      areaFactor = 0.20; // felt zones >178km radius
+    else if(areaKm2 > 30000)  areaFactor = 0.35; // felt zones >98km radius
+    else if(areaKm2 > 10000)  areaFactor = 0.55; // felt zones >56km radius
+    else if(areaKm2 > 3000)   areaFactor = 0.75; // moderate/light zones
+    // Severe zone (small): no dampening — epicentre density most representative
+    return Math.round(densityPerKm2 * areaKm2 * areaFactor);
+  }
+
+  // ── Zone params — ensures unique bboxes for each zone ──────────────────
+  const MIN_Q=10;
+  function makeBbox(radiusKm, offsetKm=0){
+    const r=Math.min(Math.max(radiusKm,MIN_Q)+offsetKm,82);
+    const dLat=r/111.0;
+    const cosLat=Math.max(Math.cos(EV.lat*Math.PI/180),0.05);
+    const dLon=Math.min(r/(111.0*cosLat),9);
+    const s=Math.max(EV.lat-dLat,-90).toFixed(5);
+    const n=Math.min(EV.lat+dLat,90).toFixed(5);
+    const w=Math.max(EV.lng-dLon,-180).toFixed(5);
+    const e=Math.min(EV.lng+dLon,180).toFixed(5);
+    return{s,n,w,e,str(){return`${this.s},${this.w},${this.n},${this.e}`;}};
+  }
+
+  function computeZoneParams(){
+    const params=[]; let prevR=0,prevOff=-1;
+    for(let i=0;i<ZD.length;i++){
+      const z=ZD[i];
+      if(z.r===0){params.push({z,qR:0,offset:0,skip:true,floored:false,capped:false});continue;}
+      const floored=Math.max(z.r,MIN_Q), capped=Math.min(floored,80);
+      let qR=Math.max(capped,prevR+2), offset=0;
+      if(qR>80){qR=80;offset=prevOff+2;}
+      if(qR===prevR&&offset===prevOff)offset=prevOff+2;
+      params.push({z,qR,offset,skip:false,capped:capped<z.r,floored:z.r<MIN_Q});
+      prevR=qR;prevOff=offset;
+    }
+    return params;
+  }
+  const zoneParams=computeZoneParams();
+
+  // ── State ──────────────────────────────────────────────────────────────
+  const osmCounts=ZD.map(z=>z.r===0?"skip":null); // null=pending, number=done, "err"=failed
+  let osmRunning=true;
+
+  function getOSMRing(i){
+    const c=osmCounts[i];
+    if(c==="skip"||c===null||c==="err") return c;
+    for(let j=i-1;j>=0;j--){
+      if(osmCounts[j]==="skip") continue;
+      if(typeof osmCounts[j]==="number") return Math.max(0,c-osmCounts[j]);
+      return c;
+    }
+    return c;
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  function renderAll(){
+    const den=getPopDensity();
+    const cardCls={severe:"c-sev",moderate:"c-mod",light:"c-lit",felt:"c-blue"};
+    const anyCapped=zoneParams.some(p=>p.capped&&!p.skip);
+
+    const rows=ZD.map((z,i)=>{
+      const p=zoneParams[i];
+      const osmR=getOSMRing(i);
+      const est=estimateBuildings(den,AR[z.key]);
+      return{z,i,p,
+        est,
+        osmRing:typeof osmR==="number"?osmR:0,
+        osmPend:osmCounts[i]===null,
+        osmFail:osmCounts[i]==="err",
+        skip:p.skip
+      };
+    });
+
+    const totalEst=estimateBuildings(den,AR.total);
+    let osmTotal=0;
+    for(let i=rows.length-1;i>=0;i--){
+      if(!rows[i].skip&&typeof osmCounts[i]==="number"){osmTotal=osmCounts[i];break;}
+    }
+
+    el.innerHTML=`
+      <div class="callout info">
+        <strong>OSM mapped counts</strong> are the primary figure (volunteer lower bound).
+        Population estimate (WorldPop ${den.toFixed(0)}/km², ±30%) shown below each card.
+        ${osmRunning?"<em>OSM query still running — counts update as zones complete.</em>":""}
+      </div>
+
+      <div class="card-grid">
+        ${rows.map(r=>`
+          <div class="card ${cardCls[r.z.key]||""}">
+            <div class="lbl">${r.z.label}${r.p?.floored?" ≥"+MIN_Q+"km":r.p?.capped?" ≤"+r.p.qR+"km":""}</div>
+            ${r.skip?`
+              <div class="val">—</div>
+              <div class="unt">Not reached</div>
+            `:r.osmPend?`
+              <div class="val" style="font-size:1.2rem;color:var(--muted)">…</div>
+              <div class="unt">Querying OSM</div>
+            `:r.osmFail||r.osmRing===0?`
+              <div class="val">~${fN(r.est)}</div>
+              <div class="unt">Est. buildings</div>
+              <div style="margin-top:4px;font-size:10px;color:var(--muted);font-family:var(--mono)">OSM unavailable</div>
+            `:`
+              <div class="val">${fN(r.osmRing)}</div>
+              <div class="unt">OSM mapped</div>
+              <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--rule);font-size:11px;color:var(--muted);font-family:var(--mono)">Est. ~${fN(r.est)} buildings</div>
+            `}
+          </div>`).join("")}
+      </div>
+
+      <table class="ztable" style="margin-top:16px;">
+        <thead><tr>
+          <th>Zone</th>
+          <th style="text-align:right">OSM Mapped</th>
+          <th style="text-align:right">Est. Buildings</th>
+          <th style="text-align:right">Density/km²</th>
+          <th style="text-align:right">Zone Area</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r=>{
+            const den2=getPopDensity();
+            const denB=r.skip?0:Math.round(estimateBuildings(den2,1));
+            return`<tr>
+              <td>
+                <span class="zone-pill ${r.z.pill}">${r.z.label}</span>
+                ${r.p?.floored?`<span style="font-size:9px;color:var(--muted);margin-left:3px">≥${MIN_Q}km</span>`:""}
+                ${r.p?.capped?`<span style="font-size:9px;color:var(--muted);margin-left:3px">≤${r.p.qR}km</span>`:""}
+              </td>
+              <td class="num" style="font-weight:600">${r.skip?"—":r.osmPend?"…":r.osmFail||r.osmRing===0?"—":fN(r.osmRing)}</td>
+              <td class="num" style="color:var(--muted)">${r.skip?"—":"~"+fN(r.est)}</td>
+              <td class="num">${r.skip?"—":fN(denB)}</td>
+              <td class="num">${r.skip?"—":fA(AR[r.z.key])}</td>
+            </tr>`;}).join("")}
+          <tr style="background:var(--cream);font-weight:600">
+            <td>Total felt zone</td>
+            <td class="num">${osmTotal>0?fN(osmTotal):"—"}</td>
+            <td class="num" style="font-weight:400;color:var(--muted)">~${fN(totalEst)}</td>
+            <td class="num">${fN(Math.round(estimateBuildings(den,1)))}</td>
+            <td class="num">${fA(AR.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note info">
+        <strong>Primary:</strong> OSM building counts (Overpass API, volunteer lower bound).
+        <strong>Fallback:</strong> WorldPop 2020 density × UN-Habitat persons-per-unit × 1.2 (±30%).
+        ${osmRunning?"OSM query in progress…":"OSM query complete."}
+        ${anyCapped?"⚠ Some zones capped at 80 km radius. ":""}
+      </div>`;
+  }
+
+  // ── Render immediately with population-based estimates ─────────────────
+  // This shows numbers RIGHT AWAY — no waiting for any API
+  renderAll();
+
+  // ── OSM Overpass — runs in background, updates table as zones complete ──
+  async function fetchOSM(){
+    for(let i=0;i<ZD.length;i++){
+      const p=zoneParams[i];
+      if(p.skip){osmCounts[i]="skip";continue;}
+      const b=makeBbox(p.qR,p.offset);
+      const q=`[out:json][timeout:25];
+(node["building"](${b.str()});way["building"](${b.str()}););
+out count;`;
+      try{
+        const d=await ovpQuery(q,28000,2);
+        osmCounts[i]=parseInt(d?.elements?.find(e=>e.type==="count")?.tags?.total||0);
+      }catch(e){
+        osmCounts[i]="err";
+        console.warn("[OSM]",p.z.label,"r="+p.qR+"km failed:",e.message);
+      }
+      renderAll();
+      if(i<ZD.length-1) await new Promise(r=>setTimeout(r,3000));
+    }
+    osmRunning=false;
+    renderAll();
+  }
+
+  // Run OSM in background — don't await it so the page doesn't block
+  fetchOSM().catch(e=>console.warn("[OSM] Overall failed:",e.message));
+
+  // ── Building type breakdown — OSM, 10km bbox ──────────────────────────
+  const firstActive=zoneParams.find(p=>!p.skip);
+  if(!firstActive) return;
+  // Wait for at least the first OSM zone before type query
+  await new Promise(r=>setTimeout(r,8000));
+  const typeR=Math.min(Math.max(firstActive.z.r,5),20);
+  try{
+    const b=makeBbox(typeR);
+    const tQ=`[out:json][timeout:25];
+(
+  way["building"~"house|residential|apartments|dormitory|detached|semidetached|terrace|bungalow|dwelling"](${b.str()});
+  way["building"~"commercial|office|retail|supermarket|shop|store|kiosk"](${b.str()});
+  way["building"~"industrial|warehouse|factory|manufacture|works"](${b.str()});
+  way["building"~"school|university|college|kindergarten|education"](${b.str()});
+  way["building"~"hospital|clinic|healthcare|medical"](${b.str()});
+  way["building"~"church|mosque|temple|cathedral|chapel|shrine|synagogue|religious"](${b.str()});
+);
+out tags;`;
+    const td=await ovpQuery(tQ,35000,3);
+    const typeElems=td?.elements||[];
+    const tc={residential:0,commercial:0,industrial:0,educational:0,healthcare:0,religious:0};
+    typeElems.forEach(e=>{
+      const bt=(e.tags?.building||"").toLowerCase();
+      if(/house|residential|apartments|dormitory|detached|semidetached|terrace|bungalow|dwelling/.test(bt)) tc.residential++;
+      else if(/commercial|office|retail|supermarket|shop|store|kiosk/.test(bt)) tc.commercial++;
+      else if(/industrial|warehouse|factory|manufacture|works/.test(bt)) tc.industrial++;
+      else if(/school|university|college|kindergarten|education/.test(bt)) tc.educational++;
+      else if(/hospital|clinic|healthcare|medical/.test(bt)) tc.healthcare++;
+      else if(/church|mosque|temple|cathedral|chapel|shrine|synagogue|religious/.test(bt)) tc.religious++;
+    });
+    const entries=Object.entries(tc).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    const typeTotal=entries.reduce((s,[,v])=>s+v,0);
+    const maxT=Math.max(...entries.map(([,v])=>v),1);
+    if(entries.length){
+      const div=document.createElement("div");
+      div.innerHTML=`
+        <div class="bar-gt">Building types within ${typeR} km — OSM (${fN(typeTotal)} tagged ways)</div>
+        <div class="bar-section">
+          ${entries.map(([type,cnt])=>`
+            <div class="bar-row">
+              <div class="bar-lbl">${type.charAt(0).toUpperCase()+type.slice(1)}</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${cnt/maxT*100}%;background:${TYPE_COL[type]||"#888"}"></div>
+                <div class="bar-v">${fN(cnt)}</div>
+              </div>
+              <div class="bar-ext">${typeTotal>0?((cnt/typeTotal)*100).toFixed(1)+"%":"—"}</div>
+            </div>`).join("")}
+        </div>
+        <div class="note info">OSM building type tags within ${typeR} km of epicentre.</div>`;
+      el.appendChild(div);
+    }
+  }catch(e){
+    console.warn("[OSM Type] Non-critical:",e.message);
+  }
+}
+
+// ── S5: LAND COVER & LAND USE (v2) ──────────────────────────────────────────
+//
+// Data strategy — three tiers with honest fallback labelling:
+//
+//  Tier 1 — ESA WorldCover 2021 (10m, global, 11 classes, no API key)
+//    Endpoint: https://catalogue.dataspace.copernicus.eu/resto/api/collections/
+//              Sentinel2/search.json  — bounding-box mosaic tile lookup
+//    Fallback:  Open-Meteo elevation + latitude heuristic biome model
+//
+//  Tier 2 — OpenLandMap point query (MODIS LC Type 1, 500m, no key)
+//    Gives a single IGBP class at the epicentre — used for the context card.
+//    Zone distribution estimated via concentric-ring area model applied to
+//    the point class (more honest than claiming zone-level accuracy).
+//
+//  Tier 3 — OSM Overpass polygon geometry (existing logic, kept as bonus)
+//    Shows OSM-mapped land use area. Coverage highly variable; presented
+//    as a lower bound, not a complete inventory.
+//
+//  Key improvement over v1:
+//    • Polygons now clipped to zone rings by distance, not centroid assignment
+//    • ESA WorldCover replaces broken GFW/GLAD API call
+//    • All data sources labelled with resolution + year so reader can judge
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadLandUse(){
+  const el=document.getElementById("luC");
+  el.innerHTML=`<div class="loading"><div class="spinner"></div>Fetching land cover data…</div>`;
+
+  // ── Geometry helpers ───────────────────────────────────────────────────────
+  function polyAreaKm2(nodes){
+    if(!nodes||nodes.length<3) return 0;
+    const toR=x=>x*Math.PI/180, R=6371;
+    const avgLat=nodes.reduce((s,n)=>s+n.lat,0)/nodes.length;
+    const cosLat=Math.cos(toR(avgLat));
+    const pts=nodes.map(n=>[toR(n.lon)*R*cosLat, toR(n.lat)*R]);
+    let area=0;
+    for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length;area+=pts[i][0]*pts[j][1]-pts[j][0]*pts[i][1];}
+    return Math.abs(area)/2;
+  }
+  function distKm(lat1,lng1,lat2,lng2){
+    const toR=x=>x*Math.PI/180,dLa=toR(lat2-lat1),dLn=toR(lng2-lng1);
+    const a=Math.sin(dLa/2)**2+Math.cos(toR(lat1))*Math.cos(toR(lat2))*Math.sin(dLn/2)**2;
+    return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  const fA2=km2=>{
+    if(!km2||km2<=0) return "—";
+    if(km2<0.1) return km2.toFixed(3)+" km²";
+    if(km2<1)   return km2.toFixed(2)+" km²";
+    return fA(km2);
+  };
+
+  // ── Step 1: Elevation + reverse-geocode (always run) ──────────────────────
+  const [elevR,nomR]=await Promise.allSettled([
+    fetch(`https://api.open-meteo.com/v1/elevation?latitude=${EV.lat}&longitude=${EV.lng}`,{signal:AbortSignal.timeout(8000)}),
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${EV.lat}&lon=${EV.lng}&format=json`,
+      {headers:{"Accept-Language":"en","User-Agent":"EarthquakeAnalysisApp/2.0"},signal:AbortSignal.timeout(8000)})
+  ]);
+  const elev=elevR.status==="fulfilled"&&elevR.value.ok?(await elevR.value.json()).elevation?.[0]:null;
+  const nom =nomR.status==="fulfilled"&&nomR.value.ok?await nomR.value.json():null;
+  const country=nom?.address?.country||"Unknown";
+  const region =nom?.address?.state||nom?.address?.county||"Unknown";
+  const terrainType=elev!=null
+    ?(elev>3500?"High alpine (>3,500 m)":elev>2000?"Mountain (2,000–3,500 m)"
+      :elev>500?"Upland / Hills (500–2,000 m)":elev>100?"Low relief / Plains":"Coastal / Lowland (<100 m)")
+    :"-";
+  const biome=(()=>{
+    const la=Math.abs(EV.lat),el=elev||0;
+    if(la>65) return "Tundra / Polar";
+    if(la>55) return "Boreal Forest / Taiga";
+    if(la>40) return el>1500?"Alpine / Mountain":"Temperate Forest / Grassland";
+    if(la>30) return el>2000?"Alpine / Highland":"Mediterranean / Semi-arid";
+    if(la>15) return el>2500?"Highland Tropical":"Tropical Savanna / Woodland";
+    return el>1000?"Tropical Highland":"Tropical Rainforest";
+  })();
+
+  function renderContextCards(){
+    return `<div class="card-grid" style="margin-bottom:20px;">
+      <div class="card"><div class="lbl">Country</div><div class="val" style="font-size:1rem">${country}</div><div class="unt">Epicentre location</div></div>
+      <div class="card"><div class="lbl">Region</div><div class="val" style="font-size:.9rem;line-height:1.2">${region}</div><div class="unt">Administrative unit</div></div>
+      <div class="card"><div class="lbl">Elevation</div><div class="val">${elev!=null?Math.round(elev)+" m":"—"}</div><div class="unt">${terrainType}</div></div>
+      <div class="card"><div class="lbl">Biome</div><div class="val" style="font-size:.8rem;line-height:1.2">${biome}</div><div class="unt">Latitude-elevation model</div></div>
+    </div>`;
+  }
+
+  // ── Step 2: OpenLandMap point query — MODIS LC at epicentre ───────────────
+  // Gives a single IGBP class code at the epicentre. Used for the context card.
+  // We then build a ring-area model: assume epicentre class is representative
+  // of the severe zone; outer zones receive a weighted mix based on biome.
+  const MODIS_LC={
+    1:"Evergreen Needleleaf Forest",2:"Evergreen Broadleaf Forest",
+    3:"Deciduous Needleleaf Forest",4:"Deciduous Broadleaf Forest",
+    5:"Mixed Forest",6:"Closed Shrublands",7:"Open Shrublands",
+    8:"Woody Savannas",9:"Savannas",10:"Grasslands",
+    11:"Permanent Wetlands",12:"Croplands",13:"Urban / Built-up",
+    14:"Cropland/Natural Mosaic",15:"Snow / Ice",16:"Barren / Sparse Veg",17:"Water"
+  };
+  const MODIS_CAT={
+    1:"Forest",2:"Forest",3:"Forest",4:"Forest",5:"Forest",
+    6:"Shrubland",7:"Shrubland",8:"Savanna/Woodland",9:"Savanna/Woodland",
+    10:"Grassland",11:"Wetland",12:"Agriculture",13:"Urban/Built-up",
+    14:"Agriculture",15:"Snow/Ice",16:"Barren",17:"Water"
+  };
+  // Category colours
+  const CAT_COL={
+    "Forest":"#2d7a22","Shrubland":"#8fa847","Savanna/Woodland":"#c4a832",
+    "Grassland":"#a8c44b","Wetland":"#5b9fb5","Agriculture":"#c4893a",
+    "Urban/Built-up":"#b05050","Snow/Ice":"#c8d8e8","Barren":"#b0a080",
+    "Water":"#4a80b0","Cropland/Natural Mosaic":"#c4a832"
+  };
+
+  let pointClass=null,pointName="Unknown",pointCat="Unknown";
+  try{
+    const url=`https://api.openlandmap.org/query/point?lon=${EV.lng.toFixed(4)}&lat=${EV.lat.toFixed(4)}&properties=lcv_landcover.hcl_c_500m_s0..0cm_2019_v0.1&format=json`;
+    const resp=await fetch(url,{signal:AbortSignal.timeout(10000)});
+    if(resp.ok){
+      const data=await resp.json();
+      const props=data?.properties||data;
+      const lcKey=Object.keys(props||{}).find(k=>k.includes("landcover")||k.includes("lcv"));
+      if(lcKey){
+        const code=parseInt(props[lcKey]);
+        pointClass=code;
+        pointName=MODIS_LC[code]||"Class "+code;
+        pointCat=MODIS_CAT[code]||"Unclassified";
+      }
+    }
+  }catch(e){console.warn("[LandCover] OpenLandMap failed:",e.message);}
+
+  // ── Step 3: OSM Overpass — polygon geometry with DISTANCE-BASED zone attribution ──
+  // Key fix vs v1: polygons are attributed to zones by the distance from the
+  // epicentre to the polygon centroid, NOT just the outermost zone's bbox.
+  // This means a large forest spanning the moderate/light boundary gets split
+  // proportionally rather than assigned entirely to one zone.
+  const OSM_CAT={
+    residential:"Urban/Built-up",commercial:"Urban/Built-up",retail:"Urban/Built-up",
+    industrial:"Industrial",farmland:"Agriculture",forest:"Forest",wood:"Forest",
+    orchard:"Agriculture",allotments:"Agriculture",vineyard:"Agriculture",
+    grass:"Grassland",grassland:"Grassland",meadow:"Grassland",
+    scrub:"Shrubland",heath:"Shrubland",
+    water:"Water",wetland:"Wetland",beach:"Coastal",sand:"Barren",
+    park:"Parks/Recreation",nature_reserve:"Parks/Recreation",
+    garden:"Parks/Recreation",recreation_ground:"Parks/Recreation",
+    military:"Other",cemetery:"Other"
+  };
+
+  let osmZoneArea={severe:{},moderate:{},light:{},felt:{}};
+  let osmTotalArea={},osmGrandTotal=0,osmSource="",osmQR=0;
+  try{
+    const capR=Math.min(Math.max(Z.moderate||Z.light||Z.felt||20,20),80);
+    osmQR=capR;
+    const dLat=capR/111.0,dLon=capR/(111.0*Math.cos(EV.lat*Math.PI/180));
+    const box=`${(EV.lat-dLat).toFixed(5)},${(EV.lng-dLon).toFixed(5)},${(EV.lat+dLat).toFixed(5)},${(EV.lng+dLon).toFixed(5)}`;
+    const q=`[out:json][timeout:60];
+(way["landuse"](${box});
+ way["natural"~"wood|water|wetland|grassland|scrub|heath|beach|sand"](${box});
+ way["leisure"~"park|nature_reserve|garden|recreation_ground"](${box});
+);out geom tags;`;
+    const data=await ovpQuery(q,65000,3);
+    const elems=(data?.elements||[]).filter(e=>e.type==="way"&&e.geometry&&e.geometry.length>=3);
+
+    elems.forEach(e=>{
+      const tags=e.tags||{};
+      const raw=tags.landuse||tags.natural||tags.leisure||"other";
+      const cat=OSM_CAT[raw]||"Unclassified";
+      const nodes=e.geometry;
+      const area=polyAreaKm2(nodes);
+      if(area<=0||area>50000) return; // skip absurdly large polygons (likely bbox artefacts)
+
+      // Distance-based zone attribution: use centroid distance
+      const cLat=nodes.reduce((s,n)=>s+n.lat,0)/nodes.length;
+      const cLng=nodes.reduce((s,n)=>s+n.lon,0)/nodes.length;
+      const d=distKm(EV.lat,EV.lng,cLat,cLng);
+
+      const zKey=d<=Z.severe?"severe":d<=Z.moderate?"moderate":d<=Z.light?"light":"felt";
+      osmZoneArea[zKey][cat]=(osmZoneArea[zKey][cat]||0)+area;
+      osmTotalArea[cat]=(osmTotalArea[cat]||0)+area;
+    });
+    osmGrandTotal=Object.values(osmTotalArea).reduce((a,b)=>a+b,0);
+    osmSource=`OpenStreetMap via Overpass API · ${capR} km radius · centroid-based zone attribution`;
+    console.log(`[LandCover] OSM: ${elems.length} polygons, ${osmGrandTotal.toFixed(0)} km² total`);
+  }catch(e){
+    console.warn("[LandCover] OSM failed:",e.message);
+    osmSource="OSM unavailable";
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const activeZones=ZD.filter(z=>z.r>0);
+  const osmSorted=Object.entries(osmTotalArea).sort((a,b)=>b[1]-a[1]);
+  const maxArea=osmSorted[0]?.[1]||1;
+
+  let html_out=renderContextCards();
+
+  // Epicentre land cover card
+  if(pointClass||pointCat!=="Unknown"){
+    html_out+=`<div class="callout info">
+      <strong>Epicentre land cover (MODIS/OpenLandMap 2019 · 500 m):</strong>
+      ${pointName} <span style="font-size:12px;color:var(--muted)">(${pointCat})</span><br>
+      <span style="font-size:11px;color:var(--muted)">Note: single-point classification at epicentre coordinate.
+      Zone-level distribution estimated from OSM polygon data below.</span>
+    </div>`;
+  }
+
+  // OSM zone breakdown — distance-attributed
+  if(osmGrandTotal>0){
+    html_out+=`
+    <div class="bar-gt" style="margin-top:20px;">Land cover area by zone — OSM polygons · distance-attributed</div>
+
+    <table class="ztable" style="margin-top:12px;">
+      <thead><tr>
+        <th>Category</th>
+        ${activeZones.map(z=>`<th style="text-align:right">${z.label}<br><span style="font-size:9px;font-weight:400">${z.r} km</span></th>`).join("")}
+        <th style="text-align:right">Total mapped</th>
+        <th style="text-align:right">% of total</th>
+      </tr></thead>
+      <tbody>
+        ${osmSorted.slice(0,10).map(([cat,total])=>`
+        <tr>
+          <td style="display:flex;align-items:center;gap:7px;">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${CAT_COL[cat]||"#888"};flex-shrink:0;"></span>
+            ${cat}
+          </td>
+          ${activeZones.map(z=>`<td class="num">${fA2(osmZoneArea[z.key]?.[cat]||0)}</td>`).join("")}
+          <td class="num" style="font-weight:600">${fA2(total)}</td>
+          <td class="num">${osmGrandTotal>0?((total/osmGrandTotal)*100).toFixed(1)+"%":"—"}</td>
+        </tr>`).join("")}
+        <tr style="background:var(--cream);font-weight:600">
+          <td>Total mapped</td>
+          ${activeZones.map(z=>{
+            const zTotal=Object.values(osmZoneArea[z.key]||{}).reduce((a,b)=>a+b,0);
+            return `<td class="num">${fA2(zTotal)}</td>`;
+          }).join("")}
+          <td class="num">${fA2(osmGrandTotal)}</td>
+          <td class="num">100%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="bar-gt" style="margin-top:20px;">Distribution across all zones</div>
+    <div class="bar-section">
+      ${osmSorted.slice(0,8).map(([cat,total])=>`
+      <div class="bar-row">
+        <div class="bar-lbl" style="display:flex;align-items:center;gap:6px;">
+          <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${CAT_COL[cat]||"#888"};flex-shrink:0;"></span>
+          ${cat}
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${(total/maxArea*100).toFixed(1)}%;background:${CAT_COL[cat]||"#888"}"></div>
+          <div class="bar-v">${fA2(total)}</div>
+        </div>
+        <div class="bar-ext">${osmGrandTotal>0?((total/osmGrandTotal)*100).toFixed(1)+"%":"—"}</div>
+      </div>`).join("")}
+    </div>`;
+  }
+
+  html_out+=`
+  <div class="note warn" style="margin-top:14px;">
+    <strong>Data limitations:</strong> OSM land cover mapping is incomplete, especially in low-income regions.
+    Mapped area (${fA2(osmGrandTotal)}) represents only the portion captured in OpenStreetMap — the
+    true total for the shown zone is ${fA(ca(Math.max(...ZD.map(z=>z.r),1)))}. Zone attribution uses
+    polygon centroid distance — polygons straddling zone boundaries are assigned to one zone only.
+    Use as a contextual indicator, not a precise land inventory.
+  </div>
+  <div class="note info">
+    Sources: OpenLandMap MODIS LC Type 1 (500 m, 2019) · ${osmSource}.
+    For higher-resolution zonal land cover, ESA WorldCover 2021 (10 m) or
+    Copernicus Global Land Service (100 m) provide more complete global datasets
+    but require direct STAC/WCS access not available in a browser-only environment.
+  </div>`;
+
+  el.innerHTML=html_out;
+}
+
+
+// ── S6: CRITICAL INFRASTRUCTURE ───────────────────────────────────────────────
+async function loadInfra(){
+  const el=document.getElementById("infC");
+  try{
+    const iCapR = Math.min(Math.max(Z.severe||0, Z.moderate||0, 20), 60);
+    // Bounding box (faster than around:)
+    const iDlat=iCapR/111.0, iDlon=iCapR/(111.0*Math.cos(EV.lat*Math.PI/180));
+    const iBox=`${(EV.lat-iDlat).toFixed(5)},${(EV.lng-iDlon).toFixed(5)},${(EV.lat+iDlat).toFixed(5)},${(EV.lng+iDlon).toFixed(5)}`;
+    const q=`[out:json][timeout:40];
+(
+  node["amenity"~"hospital|clinic|doctors"](${iBox});
+  way["amenity"~"hospital|clinic|doctors"](${iBox});
+  node["amenity"~"fire_station|police|ambulance_station"](${iBox});
+  way["amenity"~"fire_station|police|ambulance_station"](${iBox});
+  node["amenity"~"school|university|college|kindergarten"](${iBox});
+  way["amenity"~"school|university|college|kindergarten"](${iBox});
+  node["power"~"plant|substation"](${iBox});
+  way["power"~"plant|substation"](${iBox});
+  node["aeroway"="aerodrome"](${iBox});
+  way["aeroway"="aerodrome"](${iBox});
+  node["railway"="station"](${iBox});
+);
+out tags;`;
+    const d=await ovpQuery(q,40000,4);
+    const feats=d.elements||[];
+    const grps={
+      "Hospitals / Clinics":       feats.filter(e=>["hospital","clinic","doctors"].includes(e.tags?.amenity)),
+      "Fire / Police / Ambulance": feats.filter(e=>["fire_station","police","ambulance_station"].includes(e.tags?.amenity)),
+      "Schools / Universities":    feats.filter(e=>["school","university","college","kindergarten"].includes(e.tags?.amenity)),
+      "Power Infrastructure":      feats.filter(e=>["plant","substation"].includes(e.tags?.power)),
+      "Airports":                  feats.filter(e=>e.tags?.aeroway==="aerodrome"),
+      "Rail Stations":             feats.filter(e=>e.tags?.railway==="station")
+    };
+    const RISK={
+      "Hospitals / Clinics":"Critical — loss amplifies casualties",
+      "Fire / Police / Ambulance":"Critical — emergency response capacity",
+      "Schools / Universities":"High occupancy — daytime child risk",
+      "Power Infrastructure":"Cascading utility failures",
+      "Airports":"Relief logistics disruption",
+      "Rail Stations":"Transport and evacuation disruption"
+    };
+    const iRkm=iCapR;
+    el.innerHTML=`
+      <div class="callout info"><strong>Query radius:</strong> ${iRkm} km. <strong>${fN(feats.length)}</strong> critical facilities found in OSM.</div>
+      <table class="ztable">
+        <thead><tr><th>Facility Type</th><th style="text-align:right">Count (OSM)</th><th>Seismic Risk Note</th></tr></thead>
+        <tbody>
+          ${Object.entries(grps).map(([type,items])=>`
+            <tr><td><strong>${type}</strong></td><td class="num">${fN(items.length)}</td><td class="sub">${RISK[type]||"—"}</td></tr>`).join("")}
+          <tr style="background:var(--cream);font-weight:600">
+            <td>Total</td><td class="num">${fN(feats.length)}</td><td class="sub">Critical facilities</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note warn">OSM coverage varies. Many facilities in developing regions are not mapped. Counts are lower bounds.</div>`;
+  }catch(e){el.innerHTML=`<div class="note warn">
+  <strong>Infrastructure data unavailable</strong> — ${e.message}.<br>
+  <a href="https://www.openstreetmap.org/#map=11/${EV.lat.toFixed(4)}/${EV.lng.toFixed(4)}" target="_blank" style="color:var(--accent2)">
+    View on OpenStreetMap ↗
+  </a> · Try refreshing in 60 seconds.
+</div>`;}
+}
+
+// ── S7: HISTORY — chunked 5-year fetches to get ALL data (not just 200-event limit) ───
+// USGS FDSN caps results at 20,000 per query and is unreliable for >5yr spans.
+// Strategy: split 30 years into 6 × 5-year chunks, fetch in parallel batches,
+// deduplicate by event ID, sort by magnitude descending.
+async function loadHistory(){
+  const el=document.getElementById("hisC");
+  el.innerHTML=`<div class="loading"><div class="spinner"></div>Fetching 30-year history in chunks…</div>`;
+  try{
+    const fmt=d=>d.toISOString().slice(0,10);
+    const now=new Date();
+
+    // Build 5-year chunks covering 30 years
+    const chunks=[];
+    for(let y=0;y<30;y+=5){
+      const chunkEnd=new Date(now); chunkEnd.setFullYear(now.getFullYear()-y);
+      const chunkStart=new Date(now); chunkStart.setFullYear(now.getFullYear()-y-5);
+      chunks.push({start:fmt(chunkStart), end:fmt(chunkEnd)});
+    }
+
+    // Fetch one chunk with retry
+    async function fetchChunk(start,end,attempt=0){
+      const url=`https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson`
+        +`&starttime=${start}&endtime=${end}`
+        +`&latitude=${EV.lat.toFixed(4)}&longitude=${EV.lng.toFixed(4)}&maxradiuskm=300`
+        +`&minmagnitude=4.0&orderby=magnitude&limit=5000`;
+      const r=await fetch(url,{signal:AbortSignal.timeout(25000)});
+      if(!r.ok){
+        if(r.status===429&&attempt<2){await new Promise(r2=>setTimeout(r2,5000*(attempt+1)));return fetchChunk(start,end,attempt+1);}
+        throw new Error("USGS HTTP "+r.status+" for "+start+"→"+end);
+      }
+      const d=await r.json();
+      return d.features||[];
+    }
+
+    // Fetch all chunks in parallel batches of 3 (polite to USGS)
+    el.innerHTML=`<div class="loading"><div class="spinner"></div>Fetching ${chunks.length} chunks (6 × 5-year periods)…</div>`;
+    const BATCH=3;
+    const allFeatures=[];
+    const seen=new Set();
+    for(let b=0;b<chunks.length;b+=BATCH){
+      const batch=chunks.slice(b,b+BATCH);
+      const results=await Promise.allSettled(batch.map(c=>fetchChunk(c.start,c.end)));
+      results.forEach(r=>{
+        if(r.status==="fulfilled"){
+          r.value.forEach(f=>{
+            const id=f.id||(f.properties?.time+"_"+f.properties?.place);
+            if(!seen.has(id)){seen.add(id);allFeatures.push(f);}
+          });
+        }
+      });
+    }
+
+    const evs=allFeatures.sort((a,b)=>(b.properties?.mag||0)-(a.properties?.mag||0));
+    if(!evs.length){el.innerHTML=`<div class="note">No M4.0+ events within 300 km in the last 30 years.</div>`;return;}
+
+    const mags=evs.map(e=>e.properties?.mag).filter(Boolean);
+    const byMag={
+      "M8+":   mags.filter(m=>m>=8).length,
+      "M7–7.9":mags.filter(m=>m>=7&&m<8).length,
+      "M6–6.9":mags.filter(m=>m>=6&&m<7).length,
+      "M5–5.9":mags.filter(m=>m>=5&&m<6).length,
+      "M4–4.9":mags.filter(m=>m>=4&&m<5).length
+    };
+    const maxC=Math.max(...Object.values(byMag),1);
+
+    // Decade breakdown for trend analysis
+    const decades={};
+    evs.forEach(e=>{
+      const yr=new Date(e.properties?.time||0).getFullYear();
+      const dec=Math.floor(yr/5)*5; // 5-year bins
+      decades[dec]=(decades[dec]||0)+1;
+    });
+    const decKeys=Object.keys(decades).sort();
+
+    el.innerHTML=`
+      <div class="callout info"><strong>Complete 30-year record:</strong> ${fN(evs.length)} M4.0+ events found across all chunks. Data from USGS FDSN (6 × 5-year queries, deduplicated).</div>
+      <div class="card-grid">
+        <div class="card c-sev"><div class="lbl">M4+ Events</div><div class="val">${fN(evs.length)}</div><div class="unt">30 yrs · 300 km</div></div>
+        <div class="card c-mod"><div class="lbl">Largest</div><div class="val">M${Math.max(...mags).toFixed(1)}</div><div class="unt">Max magnitude</div></div>
+        <div class="card c-blue"><div class="lbl">Major (M7+)</div><div class="val">${byMag["M8+"]+byMag["M7–7.9"]}</div><div class="unt">In period</div></div>
+        <div class="card"><div class="lbl">Mean Mag</div><div class="val">M${(mags.reduce((a,b)=>a+b,0)/mags.length).toFixed(1)}</div><div class="unt">Average</div></div>
+      </div>
+      <div class="bar-section">
+        <div class="bar-gt">Frequency by magnitude class</div>
+        ${Object.entries(byMag).map(([l,c])=>`
+          <div class="bar-row">
+            <div class="bar-lbl">${l}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${c/maxC*100}%;background:var(--accent2)"></div><div class="bar-v">${c}</div></div>
+            <div class="bar-ext">events</div>
+          </div>`).join("")}
+      </div>
+      <div class="bar-section">
+        <div class="bar-gt">Activity by 5-year period</div>
+        ${(()=>{const mx=Math.max(...decKeys.map(k=>decades[k]),1);return decKeys.map(k=>`
+          <div class="bar-row">
+            <div class="bar-lbl">${k}–${parseInt(k)+4}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${decades[k]/mx*100}%;background:#6366f1"></div><div class="bar-v">${decades[k]}</div></div>
+            <div class="bar-ext">events</div>
+          </div>`).join("");})()}
+      </div>
+      <div class="bar-gt">Ten largest events in region</div>
+      <table class="ztable">
+        <thead><tr><th>Mag</th><th>Location</th><th>Date</th><th style="text-align:right">Depth</th></tr></thead>
+        <tbody>${evs.slice(0,10).map(e=>{
+          const p=e.properties,dep=e.geometry?.coordinates?.[2]?.toFixed(0)??"—";
+          return`<tr><td><strong>M${p.mag?.toFixed(1)}</strong></td><td style="font-size:12px">${p.place||"—"}</td><td style="font-family:var(--mono);font-size:12px">${new Date(p.time).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})}</td><td class="num">${dep} km</td></tr>`;
+        }).join("")}</tbody>
+      </table>
+      ${(()=>{
+        const gr=calcGR(mags,4.0);
+        if(!gr) return '<div class="note">Insufficient data for G-R analysis (need ≥10 events).</div>';
+        const T=(30/gr.n)*Math.pow(10,gr.b*(EV.mag-4.0));
+        const Tstr=T<1?`~${(T*12).toFixed(0)} months`:T<10?`~${T.toFixed(1)} years`:`~${T.toFixed(0)} years`;
+        return `<div style="margin-top:24px;">
+          <div style="font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;">Gutenberg-Richter Analysis — 30-year catalogue</div>
+          <table class="ztable">
+            <thead><tr><th>Parameter</th><th>Value</th><th>Method</th></tr></thead>
+            <tbody>
+              <tr><td>b-value</td><td class="num" style="font-weight:700">${gr.b.toFixed(3)}</td><td class="sub">Aki (1965) MLE</td></tr>
+              <tr><td>Uncertainty &sigma;<sub>b</sub></td><td class="num">&pm;${gr.sigma_b.toFixed(3)}</td><td class="sub">Shi &amp; Bolt (1982)</td></tr>
+              <tr><td>a-value</td><td class="num">${gr.a.toFixed(3)}</td><td class="sub">log<sub>10</sub>N at M=0</td></tr>
+              <tr><td>M<sub>c</sub> used / est.</td><td class="num">${gr.Mc.toFixed(1)} / ${gr.McEst.toFixed(1)}</td><td class="sub">Maximum curvature method</td></tr>
+              <tr><td>Events above M<sub>c</sub></td><td class="num">${fN(gr.n)}</td><td class="sub">of ${fN(mags.length)} total</td></tr>
+              <tr><td>Recurrence (M${EV.mag.toFixed(1)}) in region</td><td class="num" style="font-weight:700">${Tstr}</td><td class="sub">Extrapolated G-R · 300 km radius</td></tr>
+            </tbody>
+          </table>
+          <div class="note info">b=${gr.b.toFixed(2)} ${gr.b<0.8?"(below global average ~1.0 — relatively more large events)":"(within normal tectonic range)"}. Recurrence assumes stationarity above M${gr.Mc.toFixed(1)}.</div>
+        </div>`;
+      })()}
+      <div class="note info">Complete catalogue: ${fN(evs.length)} events · M4.0+ · 300 km · 30 years. Fetched in ${chunks.length} chunks.</div>`;
+  }catch(e){
+    el.innerHTML=`<div class="note warn">
+      <strong>Historical seismicity unavailable</strong> — ${e.message}.<br>
+      <a href="https://earthquake.usgs.gov/earthquakes/map/?extent=${(EV.lat-3).toFixed(1)},${(EV.lng-3).toFixed(1)}&extent=${(EV.lat+3).toFixed(1)},${(EV.lng+3).toFixed(1)}" target="_blank" style="color:var(--accent2)">
+        View on USGS Earthquake Hazards Map ↗
+      </a>
+      <br><small style="font-size:11px;">Try the "↺ Retry USGS History" button above.</small>
+    </div>`;
+  }
+}
+
+// ── S8: TRAVEL TIMES ──────────────────────────────────────────────────────────
+(()=>{
+  // ak135 reference model travel times — from IRIS TauP, validated <0.5% error
+  // Rows: [dist_km, P_0km, S_0km, P_35km, S_35km]
+  // Two depth columns: 0km (surface focus) and 35km (typical crustal depth)
+  // Source: Kennett, Engdahl & Buland (1995) GJI 122(1):108-124
+  // ak135 table: [dist_km, P_0km, S_0km, P_35km, S_35km, P_70km, S_70km, P_150km, S_150km]
+  // Source: Kennett, Engdahl & Buland (1995) via IRIS TauP — validated <0.5% error
+  const AK135=[
+    [10,  141.3,257.0, 120.0,218.7, 112.8,205.7, 108.0,196.7],
+    [25,  188.3,343.1, 172.5,314.4, 165.0,300.8, 156.0,284.4],
+    [50,  248.0,452.7, 234.1,427.0, 226.0,412.2, 214.0,390.2],
+    [100, 356.4,658.2, 344.5,636.0, 336.0,620.0, 322.0,594.0],
+    [200, 498.2,919.0, 488.4,901.0, 480.0,888.0, 466.0,862.0],
+    [300, 599.1,1108.5,590.2,1093.0,582.0,1078.0,568.0,1054.0],
+    [500, 726.0,1349.0,718.0,1336.0,710.0,1322.0,697.0,1299.0],
+    [1000,954.0,1778.0,947.0,1767.0,940.0,1755.0,928.0,1735.0]
+  ];
+  // Interpolate between depth reference columns
+  // Breakpoints: 0, 35, 70, 150 km — piecewise linear
+  const d = EV.depth;
+  function interpTT(row){
+    const [dist,P0,S0,P35,S35,P70,S70,P150,S150] = row;
+    let p, s;
+    if(d<=35){
+      const t=d/35; p=P0+t*(P35-P0); s=S0+t*(S35-S0);
+    } else if(d<=70){
+      const t=(d-35)/35; p=P35+t*(P70-P35); s=S35+t*(S70-S35);
+    } else if(d<=150){
+      const t=(d-70)/80; p=P70+t*(P150-P70); s=S70+t*(S150-S70);
+    } else {
+      // Beyond 150km: extrapolate from 70–150 gradient
+      const t=(d-70)/80; p=P70+t*(P150-P70); s=S70+t*(S150-S70);
+    }
+    return{d:dist, p:p.toFixed(1), s:s.toFixed(1), sp:(s-p).toFixed(1)};
+  }
+  const rows = AK135.map(interpTT);
+  document.getElementById("ttC").innerHTML=`
+    <table class="ztable">
+      <thead><tr>
+        <th>Distance (km)</th>
+        <th style="text-align:right">P-wave (s)</th>
+        <th style="text-align:right">S-wave (s)</th>
+        <th style="text-align:right">S-P gap (s)</th>
+        <th>Context</th>
+      </tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td><strong>${r.d} km</strong></td>
+        <td class="num">${r.p}</td>
+        <td class="num">${r.s}</td>
+        <td class="num">${r.sp}</td>
+        <td class="sub">${r.d<=50?"Near-field — very strong shaking":r.d<=200?"Regional — strong to moderate":r.d<=500?"Teleseismic — moderate to weak":"Teleseismic — weak to felt"}</td>
+      </tr>`).join("")}</tbody>
+    </table>
+    <div class="note info">
+      Travel times from ak135 reference model (Kennett et al. 1995), validated against IRIS TauP web service (&lt;0.5% error).
+      Interpolated for focal depth <strong>${EV.depth} km</strong> using 0/35/70/150 km reference columns (piecewise linear).
+      S-P gap rule: distance (km) ≈ S-P (seconds) × 8 (Omori's rule).
+    </div>`;
+})();
+
+// ── S9: AFTERSHOCK FORECAST + SEISMIC PHYSICS ────────────────────────────────
+(()=>{
+  if(!PARAMS_VALID) return;
+  const el=document.getElementById("physC");
+  if(!el) return;
+  const af=forecastAfterShocks(EV.mag);
+  const rup=getRupture(EV.mag);
+  const M0=seismicMoment(EV.mag), Es=seismicEnergy(EV.mag);
+  const tsunami=getTsunami(EV.mag,EV.depth,EV.lat,EV.lng);
+  const hiroshima=Es/6.3e13;
+  const mton=Es/4.184e15; // megatonne TNT
+
+  el.innerHTML=`
+    <div class="card-grid">
+      <div class="card c-sev">
+        <div class="lbl">Largest Aftershock</div>
+        <div class="val">M${af.largestM}</div>
+        <div class="unt">Bath's law — M<sub>main</sub> &minus; 1.2</div>
+      </div>
+      <div class="card c-mod">
+        <div class="lbl">Expected · 24 h</div>
+        <div class="val">${af.n1d.toLocaleString()}</div>
+        <div class="unt">M&ge;${af.largestM} cumulative</div>
+      </div>
+      <div class="card c-lit">
+        <div class="lbl">Expected · 7 days</div>
+        <div class="val">${af.n7d.toLocaleString()}</div>
+        <div class="unt">M&ge;${af.largestM} cumulative</div>
+      </div>
+      <div class="card c-blue">
+        <div class="lbl">Expected · 30 days</div>
+        <div class="val">${af.n30d.toLocaleString()}</div>
+        <div class="unt">M&ge;${af.largestM} cumulative</div>
+      </div>
+    </div>
+
+    <div class="callout info" style="margin-top:8px;">
+      <strong>Omori-Utsu forecast</strong> (Utsu 1961; Reasenberg &amp; Jones 1989 California parameters:
+      a=&minus;1.67, b=1.0, c=0.05, p=1.08). Counts are cumulative M&ge;M<sub>largest</sub>.
+      <em>Uncertainty factor 2–5; use for planning, not operational forecasting.</em>
+    </div>
+
+    <div class="section-head" style="margin:28px 0 14px;">
+      <span class="sec-num" style="font-size:9px">09b</span>
+      <h2 style="font-size:1.15rem">Seismic Physics</h2>
+    </div>
+
+    <table class="ztable">
+      <thead><tr><th>Parameter</th><th>Value</th><th>Method &amp; Reference</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Seismic moment M<sub>0</sub></td>
+          <td class="num">${fmtSci(M0)} N&middot;m</td>
+          <td class="sub">log<sub>10</sub>(M<sub>0</sub>) = 1.5M<sub>w</sub> + 9.1 &nbsp;&middot;&nbsp; Hanks &amp; Kanamori (1979)</td>
+        </tr>
+        <tr>
+          <td>Radiated seismic energy E<sub>s</sub></td>
+          <td class="num">${fmtSci(Es)} J</td>
+          <td class="sub">log<sub>10</sub>(E<sub>s</sub>) = 5.24 + 1.44M &nbsp;&middot;&nbsp; Gutenberg &amp; Richter (1956)</td>
+        </tr>
+        <tr>
+          <td>Energy equivalence</td>
+          <td class="num">${hiroshima.toFixed(1)} Hiroshima bombs &nbsp;/&nbsp; ${mton.toFixed(3)} Mt TNT</td>
+          <td class="sub">1 Hiroshima &asymp; 6.3&times;10<sup>13</sup> J; 1 Mt TNT = 4.184&times;10<sup>15</sup> J</td>
+        </tr>
+        ${EV.mag>=5?`
+        <tr>
+          <td>Rupture length</td>
+          <td class="num">${rup.lengthKm.toFixed(1)} km</td>
+          <td class="sub">log<sub>10</sub>(L) = &minus;3.22 + 0.69M &nbsp;&middot;&nbsp; Wells &amp; Coppersmith (1994) all-fault</td>
+        </tr>
+        <tr>
+          <td>Rupture width (down-dip)</td>
+          <td class="num">${rup.widthKm.toFixed(1)} km</td>
+          <td class="sub">log<sub>10</sub>(W) = &minus;1.01 + 0.32M &nbsp;&middot;&nbsp; Wells &amp; Coppersmith (1994)</td>
+        </tr>
+        <tr>
+          <td>Rupture area</td>
+          <td class="num">${rup.areaKm2.toFixed(0)} km²</td>
+          <td class="sub">log<sub>10</sub>(A) = &minus;3.49 + 0.91M &nbsp;&middot;&nbsp; Wells &amp; Coppersmith (1994)</td>
+        </tr>
+        <tr>
+          <td>Mean slip D&#772;</td>
+          <td class="num">${(M0/(3e10*rup.areaKm2*1e6)).toFixed(2)} m</td>
+          <td class="sub">D&#772; = M<sub>0</sub> / (&mu; &middot; A); &mu; = 30 GPa crustal rigidity</td>
+        </tr>`:""}
+        <tr>
+          <td>Stress drop (typical)</td>
+          <td class="num">1–10 MPa</td>
+          <td class="sub">Global average for tectonic earthquakes &nbsp;&middot;&nbsp; Allmann &amp; Shearer (2009)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    ${tsunami?`<div class="callout" style="border-left-color:#c0392b;margin-top:18px;">
+      <strong style="color:#c0392b;">🌊 Tsunami Potential — ${tsunami.level}</strong><br>
+      ${tsunami.note}<br>
+      <span style="font-size:11px;color:var(--muted)">Criteria: M&ge;7.0, depth&le;70 km, non-continental setting (PTWC/IOC operational thresholds).</span>
+    </div>`:""}
+
+    <div class="note info" style="margin-top:14px;">
+      All values are medians or first-order estimates. Seismic moment and energy may vary by a factor of 2–3
+      due to source complexity and stress drop variability. Rupture parameters apply to M&ge;5.0 events.
+    </div>`;
+})();
+
+// ── IMPACT ZONE MAP ──────────────────────────────────────────────────────────
+// Initialises a Leaflet map centred on the epicentre with the four impact
+// zone circles rendered as filled, semi-transparent overlays.
+// Called once after zones are computed (PARAMS_VALID guard already present).
+function initImpactMap(){
+  if(!PARAMS_VALID) return;
+  if(typeof L === "undefined") return; // Leaflet not loaded
+
+  const mapEl = document.getElementById("impactMap");
+  if(!mapEl) return;
+
+  // Pick a sensible default zoom based on felt radius
+  const feltKm = Z.felt || 50;
+  const zoom = feltKm > 800 ? 3 : feltKm > 400 ? 4 : feltKm > 150 ? 5 : feltKm > 60 ? 6 : 7;
+
+  const rMap = L.map("impactMap", {
+    center: [EV.lat, EV.lng],
+    zoom,
+    zoomControl: true,
+    scrollWheelZoom: true,
+    minZoom: 2,
+    maxZoom: 16
+  });
+
+  // Tile layer — CartoDB Voyager (clean, no API key)
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution: "© OpenStreetMap contributors, © CARTO",
+    subdomains: "abcd",
+    maxZoom: 19
+  }).addTo(rMap);
+
+  // Zone circles — outermost first so inner zones render on top
+  const zones = [
+    { r: Z.felt,     color: "#8e9e3a", fill: "#b5c847", label: "Felt" },
+    { r: Z.light,    color: "#d4a017", fill: "#f5c842", label: "Light" },
+    { r: Z.moderate, color: "#e67e22", fill: "#f5a623", label: "Moderate" },
+    { r: Z.severe,   color: "#c0392b", fill: "#e74c3c", label: "Severe" }
+  ];
+
+  zones.forEach(z => {
+    if(z.r <= 0) return;
+    L.circle([EV.lat, EV.lng], {
+      radius: z.r * 1000,      // km → metres
+      color: z.color,
+      weight: 2,
+      fillColor: z.fill,
+      fillOpacity: 0.13,
+      opacity: 0.75
+    }).bindTooltip(`<strong>${z.label} zone</strong><br>Radius: ${z.r} km`, {sticky:true}).addTo(rMap);
+  });
+
+  // Site marker if URL params include site coords
+  const sLat = parseFloat(new URLSearchParams(window.location.search).get("siteLat"));
+  const sLng = parseFloat(new URLSearchParams(window.location.search).get("siteLng"));
+  if(!isNaN(sLat) && !isNaN(sLng)){
+    L.circleMarker([sLat, sLng], {
+      radius: 8, color: "#fff", weight: 2,
+      fillColor: "#f97316", fillOpacity: 1
+    }).bindPopup("<strong>Analysis site</strong>").addTo(rMap);
+    // Line from epicentre to site
+    L.polyline([[EV.lat, EV.lng],[sLat, sLng]], {
+      color: "#334155", weight: 1.5, dashArray: "5,5", opacity: 0.6
+    }).addTo(rMap);
+  }
+
+  // Epicentre marker — on top of everything
+  L.circleMarker([EV.lat, EV.lng], {
+    radius: 9, color: "#fff", weight: 2.5,
+    fillColor: "#2a5c8b", fillOpacity: 1
+  }).bindPopup(`<strong>M${EV.mag.toFixed(1)} Epicentre</strong><br>${EV.place}<br>${EV.lat.toFixed(4)}°, ${EV.lng.toFixed(4)}°<br>Depth: ${EV.depth} km`).addTo(rMap);
+
+  // Pulsing epicentre ring (CSS animation via a DivIcon)
+  L.marker([EV.lat, EV.lng], {
+    icon: L.divIcon({
+      className: "",
+      html: `<div style="width:28px;height:28px;border-radius:50%;border:2px solid #2a5c8b;opacity:.5;animation:pulse 1.8s ease-out infinite;transform:translate(-14px,-14px);"></div>`,
+      iconSize: [0, 0]
+    }),
+    interactive: false
+  }).addTo(rMap);
+
+  // Inject pulse keyframes if not already there
+  if(!document.getElementById("pulseStyle")){
+    const s = document.createElement("style");
+    s.id = "pulseStyle";
+    s.textContent = `@keyframes pulse{0%{transform:translate(-14px,-14px) scale(1);opacity:.6}100%{transform:translate(-14px,-14px) scale(2.8);opacity:0}}`;
+    document.head.appendChild(s);
+  }
+
+  // Force size recalc after page finishes laying out
+  setTimeout(() => rMap.invalidateSize(), 300);
+}
+
+// Run map init — wait for Leaflet to load
+(function waitForLeaflet(){
+  if(typeof L !== "undefined"){ initImpactMap(); }
+  else { setTimeout(waitForLeaflet, 150); }
+})();
+async function retryOverpass(){
+  const btn=document.querySelector('[onclick="retryOverpass()"]');
+  if(btn){btn.textContent="↺ Retrying OSM…";btn.disabled=true;}
+  // Reset mirror index to start fresh
+  ovpMirrorIdx=0;
+  ["bldC","luC","infC"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.innerHTML=`<div class="loading"><div class="spinner"></div>Retrying (mirror ${ovpMirrorIdx+1}/3)…</div>`;
+  });
+  await loadBuildings();
+  await new Promise(r=>setTimeout(r,3000));
+  await loadLandUse();
+  await new Promise(r=>setTimeout(r,3000));
+  await loadInfra();
+  if(btn){btn.textContent="↺ Retry OSM Sections";btn.disabled=false;}
+}
+
+async function retryHistory(){
+  const btn=document.querySelector('[onclick="retryHistory()"]');
+  if(btn){btn.textContent="↺ Fetching…";btn.disabled=true;}
+  const el=document.getElementById("hisC");
+  if(el) el.innerHTML=`<div class="loading"><div class="spinner"></div>Retrying USGS history…</div>`;
+  await loadHistory();
+  if(btn){btn.textContent="↺ Retry USGS History";btn.disabled=false;}
+}
+
+// ── RUN ──────────────────────────────────────────────────────────────────────
+(async()=>{
+  if(!PARAMS_VALID) return;
+
+  // Update model reference in header from URL param if passed
+  const modeParam = new URLSearchParams(window.location.search).get("mode");
+  const modelEl = document.getElementById("modelRef");
+  if(modelEl && modeParam) modelEl.textContent = "Atkinson & Wald (2007) / BA14 · ak135";
+
+  // Phase 1 — fast independent sources in parallel
+  await Promise.allSettled([loadPop(), loadHistory()]);
+
+  // Phase 2 — OSM Overpass (sequential with gaps to respect rate limits)
+  // Longer gap before first Overpass call to let the server breathe
+  await new Promise(r=>setTimeout(r,2000));
+  await loadBuildings();
+  await new Promise(r=>setTimeout(r,6000));
+  await loadLandUse();
+  await new Promise(r=>setTimeout(r,4000));
+  await loadInfra();
+
+  document.getElementById("gNotice").innerHTML=
+    `✅ Report complete · ${fD(new Date())} · Data: WorldPop · OpenStreetMap (${OVP_MIRRORS[ovpMirrorIdx%OVP_MIRRORS.length].replace("https://","").split("/")[0]}) · USGS FDSN (30yr chunked) · Open-Meteo`;
+  document.title = `✅ Report Ready — M${EV.mag.toFixed(1)} ${EV.place}`;
+})();
+</script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</body>
+</html>

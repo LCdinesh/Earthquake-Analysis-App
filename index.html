@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Earthquake Analysis App</title>
+  <link rel="icon" href="ICON.png" type="image/x-icon" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<!-- ===== EDUCATIONAL DISCLAIMER POPUP ===== -->
+<div id="disclaimerOverlay" class="disclaimer-overlay">
+  <div class="disclaimer-modal">
+    <div class="disclaimer-header">
+      <div class="disclaimer-header-icon">&#9888;</div>
+      <div class="disclaimer-header-text">
+        <h2>Educational Use Only</h2>
+        <p>EQApp &middot; Research &amp; Learning Platform &middot; Beta</p>
+      </div>
+    </div>
+
+    <div class="disclaimer-body">
+      <div class="disclaimer-warning-banner">
+        <span class="disclaimer-warning-stripe"></span>
+        <span class="disclaimer-warning-text">
+          This application is still under active development. Features, calculations, and data may be incomplete or subject to change.
+        </span>
+      </div>
+
+      <p class="disclaimer-intro">
+        EQApp provides <strong>earthquake impact estimates</strong> for <strong>educational and research purposes only</strong>. It uses globally validated scientific models but has important limitations:
+      </p>
+
+      <ul class="disclaimer-list">
+        <li>
+          <strong>Point-source models</strong> &mdash; impact zones may underestimate shaking for large (M&gt;7) events with extended fault ruptures.
+        </li>
+        <li>
+          <strong>Uniform site conditions</strong> &mdash; actual ground shaking varies significantly with local soil type.
+        </li>
+        <li>
+          <strong>Not an official product</strong> &mdash; do not use this tool as the sole basis for emergency response, evacuation, or safety decisions.
+        </li>
+      </ul>
+
+      <div class="disclaimer-official-note">
+        <span class="disclaimer-official-icon">&#127963;</span>
+        For official earthquake information and emergency guidance, consult:
+        <a href="https://earthquake.usgs.gov" target="_blank" rel="noopener noreferrer">USGS Earthquake Hazards Program</a>,
+        your national seismological agency, or local civil protection authorities.
+      </div>
+    </div>
+
+    <div class="disclaimer-footer">
+      <button id="disclaimerContinueBtn" class="disclaimer-continue-btn">
+        &#10003; I understand &mdash; Continue to EQApp
+      </button>
+      <p class="disclaimer-fine-print">
+        By continuing you acknowledge this tool is for educational purposes only and not a substitute for official emergency services.
+      </p>
+    </div>
+  </div>
+</div>
+
+<div id="mobileOverlay" class="mobile-overlay"></div>
+<div class="app-shell">
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="mobile-sidebar-btn" id="mobileSidebarBtn" aria-label="Toggle sidebar">&#9776;</button>
+      <h1>&#127775; Earthquake Analysis App</h1>
+      <p>Live USGS Earthquakes &middot; Travel Time &middot; Impact Scenarios</p>
+    </div>
+    <div class="topbar-center">
+      <div class="status-strip">
+        <span class="status-item">
+          <span class="status-dot dot-blue"></span>
+          <span id="countText">0 shown</span>
+        </span>
+        <span class="status-divider"></span>
+        <span class="status-item" id="updatedPill">Last updated: &mdash;</span>
+        <span class="status-divider"></span>
+        <span class="status-item" id="statusItem">
+          <span class="status-dot dot-green" id="statusDot"></span>
+          <span id="statusText">Ready</span>
+        </span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <!-- Compact inline stepper -->
+      <div class="topbar-stepper">
+        <div class="ts-step" id="step1"><div class="ts-circle">1</div><div class="ts-label">Load</div></div>
+        <div class="ts-line"></div>
+        <div class="ts-step" id="step2"><div class="ts-circle">2</div><div class="ts-label">Scenario</div></div>
+        <div class="ts-line"></div>
+        <div class="ts-step" id="step3"><div class="ts-circle">3</div><div class="ts-label">Site</div></div>
+        <div class="ts-line"></div>
+        <div class="ts-step" id="step4"><div class="ts-circle">4</div><div class="ts-label">Results</div></div>
+      </div>
+      <!-- Context hint pill -->
+      <div class="topbar-hint" id="contextHint">Load data to begin.</div>
+    </div>
+  </header>
+
+  <div class="content-shell">
+    <aside class="sidebar">
+
+      <!-- Tabs -->
+      <div class="tab-bar">
+        <button class="tab active" data-tab="data">&#128200; Data</button>
+        <button class="tab" data-tab="scenario">&#9881; Scenario</button>
+        <button class="tab" data-tab="results">&#128203; Analysis</button>
+        <button class="tab" data-tab="charts">&#128202; Charts</button>
+      </div>
+
+      <div class="sidebar-scroll">
+
+        <!-- ===== TAB: DATA ===== -->
+        <div class="tab-pane active" id="pane-data">
+
+          <section class="panel">
+            <div class="panel-title">Earthquake Data</div>
+            <div class="group">
+              <label for="mode">Data Mode</label>
+              <select id="mode">
+                <option value="feed" selected>Live Feed</option>
+                <option value="range">Date Range</option>
+              </select>
+            </div>
+            <div class="group" id="feedGroup">
+              <label for="feed">USGS Feed</label>
+              <select id="feed">
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_hour.geojson">Past hour (all)</option>
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson" selected>Past day (all)</option>
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson">Past week (all)</option>
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson">Past month (all)</option>
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson">Past day (M2.5+)</option>
+                <option value="https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson">Past week (M4.5+)</option>
+              </select>
+            </div>
+            <div class="group" id="rangeGroup" style="display:none;">
+              <label for="startDate">Start Date</label>
+              <input id="startDate" type="date" />
+            </div>
+            <div class="group" id="rangeGroup2" style="display:none;">
+              <label for="endDate">End Date</label>
+              <input id="endDate" type="date" />
+            </div>
+            <div class="group">
+              <label>Min Magnitude &nbsp;<span id="minMagDisplay" class="mag-value-badge">M 2.5</span></label>
+              <div class="mag-slider-wrap">
+                <span class="mag-tick-label">0</span>
+                <input id="minMag" type="range" min="0" max="9" step="0.1" value="2.5" class="mag-slider" />
+                <span class="mag-tick-label">9</span>
+              </div>
+              <div class="mag-color-bar"></div>
+            </div>
+            <div class="actions-grid">
+              <button id="btnLoad">&#8635; Load / Refresh</button>
+              <button id="btnPrevYear" class="secondary">&#8592; Prev Year</button>
+              <button id="btnToggleAuto" class="secondary">Auto: OFF</button>
+              <button id="btnDownload" class="secondary">&#8659; Download</button>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-title">Map Layers</div>
+            <label class="toggle-row" for="showPoints">
+              <span>Earthquake Points</span>
+              <input id="showPoints" type="checkbox" checked />
+            </label>
+            <label class="toggle-row" for="showHeatmap">
+              <span>Heatmap</span>
+              <input id="showHeatmap" type="checkbox" />
+            </label>
+            <div class="group slider-subgroup" id="heatOpacityGroup" style="display:none;">
+              <label for="heatOpacity">Heatmap Opacity</label>
+              <div class="slider-row">
+                <input id="heatOpacity" type="range" min="0.10" max="1.00" step="0.05" value="0.60" />
+                <span id="heatOpacityValue">60%</span>
+              </div>
+            </div>
+            <label class="toggle-row" for="showPlates">
+              <span>Tectonic Plates</span>
+              <input id="showPlates" type="checkbox" />
+            </label>
+            <label class="toggle-row" for="showImpactZones">
+              <span>Impact Zones</span>
+              <input id="showImpactZones" type="checkbox" checked />
+            </label>
+            <label class="toggle-row" for="showRuptureEllipse">
+              <span>Rupture Ellipse (M&ge;6)</span>
+              <input id="showRuptureEllipse" type="checkbox" checked />
+            </label>
+          </section>
+
+          <!-- Country Filter -->
+          <section class="panel">
+            <div class="panel-title">&#127758; Country Filter</div>
+            <div class="group" style="margin-bottom:6px;">
+              <label for="countrySearch">Filter by Country</label>
+              <div class="country-filter-wrap">
+                <svg class="country-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="countrySearch" class="country-search-input" placeholder="Search country…" autocomplete="off" />
+                <button class="country-clear-btn" id="countryClearBtn" title="Clear">&#10005;</button>
+              </div>
+              <div id="countryActivePill" class="country-active-pill">
+                <span id="countryActiveName"></span>
+                <button id="countryRemoveBtn" title="Remove filter">&#10005;</button>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;" id="countryFilterNote">Showing all countries. Click to filter &amp; zoom.</div>
+          </section>
+
+        </div><!-- /pane-data -->
+
+        <!-- ===== TAB: SCENARIO ===== -->
+        <div class="tab-pane" id="pane-scenario">
+
+          <!-- Mode toggle cards -->
+          <div class="mode-toggle-row">
+            <button class="mode-card active" id="modeCardCustom" data-mode="custom">
+              <span class="mode-card-icon">&#9881;</span>
+              <span class="mode-card-label">Custom</span>
+              <span class="mode-card-sub">Design your own</span>
+            </button>
+            <button class="mode-card" id="modeCardUSGS" data-mode="usgs">
+              <span class="mode-card-icon">&#127757;</span>
+              <span class="mode-card-label">Real USGS</span>
+              <span class="mode-card-sub">From loaded data</span>
+            </button>
+          </div>
+
+          <!-- ---- CUSTOM PANEL ---- -->
+          <section class="panel scenario-panel" id="panelCustom">
+            <div class="panel-title">&#9881; Custom Earthquake</div>
+            <div class="panel-note" id="scenarioSummary">Set magnitude, depth, then place source and site on the map.</div>
+
+            <div class="group">
+              <label>Magnitude &nbsp;<span id="scenMagDisplay" class="mag-value-badge mag-badge-lg">M 6.0</span></label>
+              <div class="mag-slider-wrap">
+                <span class="mag-tick-label">1</span>
+                <input id="customMagnitude" type="range" min="1" max="9.9" step="0.1" value="6.0" class="mag-slider" />
+                <span class="mag-tick-label">9.9</span>
+              </div>
+              <div class="mag-color-bar"></div>
+            </div>
+
+            <div class="group">
+              <label>Depth &nbsp;<span id="scenDepthDisplay" class="depth-badge">10 km</span></label>
+              <div class="mag-slider-wrap">
+                <span class="mag-tick-label">0</span>
+                <input id="customDepth" type="range" min="0" max="700" step="5" value="10" class="depth-slider" />
+                <span class="mag-tick-label">700</span>
+              </div>
+              <div class="depth-color-bar"></div>
+            </div>
+
+            <!-- IPE model selector -->
+            <div class="group">
+              <label for="ipeModel">&#127758; Intensity Model (IPE)</label>
+              <select id="ipeModel">
+                <option value="atkinson">Atkinson &amp; Wald (2007) — Global DYFI ✓ recommended</option>
+                <option value="bilal">Bilal &amp; Askan (2014) — Turkey/regional</option>
+                <option value="worden">Worden et al. (2012) — USGS ShakeMap</option>
+              </select>
+              <div class="panel-note" id="ipeModelNote" style="margin-top:4px;font-size:10px;color:#64748b;">Global DYFI-calibrated. Recommended for worldwide use.</div>
+            </div>
+
+            <!-- Site class selector -->
+            <div class="group">
+              <label for="siteClass">&#127968; Site / Soil Class (Vs30)</label>
+              <select id="siteClass">
+                <option value="0">A — Hard rock (Vs30 &gt;1500 m/s, &minus;0.5 MMI)</option>
+                <option value="1" selected>B — Rock (Vs30 760 m/s, reference)</option>
+                <option value="2">C — Dense soil / soft rock (+0.5 MMI)</option>
+                <option value="3">D — Stiff soil (+1.0 MMI)</option>
+                <option value="4">E — Soft soil (+1.7 MMI)</option>
+              </select>
+            </div>
+
+            <div class="place-btn-group">
+              <button class="place-btn place-btn-source" id="btnPickCustomSource">
+                <span class="place-btn-icon">&#127757;</span>
+                <span class="place-btn-text">
+                  <strong>Place Earthquake Source</strong>
+                  <small id="sourceCoordText">Not placed &mdash; click to set</small>
+                </span>
+              </button>
+              <button class="place-btn place-btn-site" id="btnPickSite">
+                <span class="place-btn-icon">&#128205;</span>
+                <span class="place-btn-text">
+                  <strong>Place Analysis Site</strong>
+                  <small id="siteCoordText">Not placed &mdash; click to set</small>
+                </span>
+              </button>
+            </div>
+
+            <button class="secondary full-width-btn" id="btnClearScenario">&#8635; Reset Scenario</button>
+          </section>
+
+          <!-- ---- USGS PANEL ---- -->
+          <section class="panel scenario-panel" id="panelUSGS" style="display:none;">
+            <div class="panel-title">&#127757; Real USGS Earthquake</div>
+            <div class="panel-note" id="usgsScenarioSummary">Click any earthquake dot on the map to select it as the source.</div>
+
+            <!-- Selected quake card -->
+            <div class="selected-quake-card" id="selectedQuakeCard">
+              <div class="sqc-empty" id="sqcEmpty">
+                <span class="sqc-icon">&#128205;</span>
+                <span>No earthquake selected yet.<br>Click a dot on the map.</span>
+              </div>
+              <div class="sqc-filled" id="sqcFilled" style="display:none;">
+                <div class="sqc-mag" id="sqcMag">M&mdash;</div>
+                <div class="sqc-info">
+                  <div class="sqc-place" id="sqcPlace">&mdash;</div>
+                  <div class="sqc-meta">
+                    <span id="sqcDepth">&mdash;</span> &middot; <span id="sqcTime">&mdash;</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- IPE model selector (USGS panel) -->
+            <div class="group" style="margin-top:10px;">
+              <label for="ipeModelUSGS">&#127758; Intensity Model</label>
+              <select id="ipeModelUSGS">
+                <option value="atkinson">Atkinson &amp; Wald (2007) — Global ✓</option>
+                <option value="bilal">Bilal &amp; Askan (2014) — Turkey/regional</option>
+                <option value="worden">Worden et al. (2012) — USGS ShakeMap</option>
+              </select>
+            </div>
+            <!-- Site class (USGS panel) -->
+            <div class="group">
+              <label for="siteClassUSGS">&#127968; Site / Soil Class</label>
+              <select id="siteClassUSGS">
+                <option value="0">A — Hard rock (&minus;0.5 MMI)</option>
+                <option value="1" selected>B — Rock (reference)</option>
+                <option value="2">C — Dense soil (+0.5 MMI)</option>
+                <option value="3">D — Stiff soil (+1.0 MMI)</option>
+                <option value="4">E — Soft soil (+1.7 MMI)</option>
+              </select>
+            </div>
+
+            <!-- Site placement -->
+            <div class="place-btn-group" style="margin-top:10px;">
+              <button class="place-btn place-btn-site" id="btnPickSiteUSGS">
+                <span class="place-btn-icon">&#128205;</span>
+                <span class="place-btn-text">
+                  <strong>Place Analysis Site</strong>
+                  <small id="siteCoordTextUSGS">Not placed &mdash; click to set</small>
+                </span>
+              </button>
+            </div>
+
+            <button class="secondary full-width-btn" id="btnClearUSGS">&#8635; Reset Selection</button>
+          </section>
+
+        </div><!-- /pane-scenario -->
+
+        <!-- ===== TAB: RESULTS ===== -->
+        <div class="tab-pane" id="pane-results">
+
+          <!-- Animation -->
+          <section class="panel">
+            <div class="panel-title">Animation</div>
+            <label class="toggle-row" for="animateImpact">
+              <span>Animate Impact Rings</span>
+              <input id="animateImpact" type="checkbox" checked />
+            </label>
+            <div class="anim-btn-row">
+              <button id="btnPlayAnimation" class="anim-btn anim-play">&#9654; Play</button>
+              <button id="btnPauseAnimation" class="anim-btn secondary">&#9646;&#9646;</button>
+              <button id="btnResetAnimation" class="anim-btn secondary">&#8635;</button>
+              <button id="btnStepAnimation" class="anim-btn secondary">+5s</button>
+            </div>
+            <div class="group" style="margin-top:10px;">
+              <label>Speed &nbsp;<span id="animationSpeedValue" class="speed-badge">5x</span></label>
+              <input id="animationSpeed" type="range" min="0.25" max="20" step="0.25" value="5" />
+            </div>
+            <div class="group">
+              <label>Timeline &nbsp;<span id="timelineSliderValue" class="speed-badge">0.0s</span></label>
+              <input id="timelineSlider" type="range" min="0" max="100" step="0.1" value="0" />
+            </div>
+            <div class="wave-chips">
+              <div class="wave-chip wave-p">
+                <div class="wave-chip-label">P-wave</div>
+                <div class="wave-chip-val" id="pWaveStatusText">Waiting</div>
+              </div>
+              <div class="wave-chip wave-s">
+                <div class="wave-chip-label">S-wave</div>
+                <div class="wave-chip-val" id="sWaveStatusText">Waiting</div>
+              </div>
+              <div class="wave-chip wave-t">
+                <div class="wave-chip-label">Elapsed</div>
+                <div class="wave-chip-val" id="animationTimeText">0.0 s</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Travel Time -->
+          <section class="panel">
+            <div class="panel-title">Travel Time</div>
+            <div class="result-grid">
+              <div class="result-row"><span>Source</span><strong id="selectedQuakeText">-</strong></div>
+              <div class="result-row"><span>Site</span><strong id="targetText">-</strong></div>
+              <div class="result-row"><span>Distance (km)</span><strong id="distanceKmText">-</strong></div>
+              <div class="result-row"><span>Distance (deg)</span><strong id="distanceDegText">-</strong></div>
+              <div class="result-row"><span>P arrival</span><strong id="pArrivalText">-</strong></div>
+              <div class="result-row"><span>S arrival</span><strong id="sArrivalText">-</strong></div>
+              <div class="result-row"><span>S-P gap</span><strong id="spText">-</strong></div>
+            </div>
+            <div class="panel-note" id="travelSummary">Set a scenario source and site to see results.</div>
+          </section>
+
+
+          <!-- Seismic Physics -->
+          <section class="panel" id="panelSeismicPhysics" style="display:none;">
+            <div class="panel-title">&#9889; Seismic Physics</div>
+            <div class="result-grid">
+              <div class="result-row"><span>Seismic Moment M&#8320;</span><strong id="momentText">-</strong></div>
+              <div class="result-row"><span>Radiated Energy E<sub>s</sub></span><strong id="energyText">-</strong></div>
+              <div class="result-row"><span>Rupture Length</span><strong id="ruptLengthText">-</strong></div>
+              <div class="result-row"><span>Rupture Width</span><strong id="ruptWidthText">-</strong></div>
+              <div class="result-row"><span>Rupture Area</span><strong id="ruptAreaText">-</strong></div>
+            </div>
+            <div class="panel-note" style="font-size:10px;color:#64748b;margin-top:4px;">
+              M&#8320; from Hanks &amp; Kanamori (1979). Rupture from Wells &amp; Coppersmith (1994) all-fault regression.
+            </div>
+          </section>
+
+          <!-- Impact Zones -->
+          <section class="panel">
+            <div class="panel-title">
+              Impact Zones
+              <span class="risk-badge" id="riskBadge" style="display:none;"></span>
+            </div>
+            <div class="impact-ring-viz" id="impactRingViz" style="display:none;">
+              <div class="ir ir-felt"></div>
+              <div class="ir ir-light"></div>
+              <div class="ir ir-mod"></div>
+              <div class="ir ir-sev"></div>
+              <div class="ir ir-epi"></div>
+            </div>
+            <div class="impact-zone-table" id="impactZoneTable" style="display:none;">
+              <div class="izt-header">
+                <span>Zone</span><span>Radius</span><span>&#177;1&#963;</span><span>Area (km²)</span>
+              </div>
+              <div class="izt-row izt-sev">
+                <span><span class="izt-dot" style="background:#ef4444"></span>Severe</span>
+                <span id="severeRadiusText">-</span>
+                <span id="severeUncertText" style="font-size:10px;color:#94a3b8;">-</span>
+                <span id="severeAreaText">-</span>
+              </div>
+              <div class="izt-row izt-mod">
+                <span><span class="izt-dot" style="background:#fb923c"></span>Moderate</span>
+                <span id="moderateRadiusText">-</span>
+                <span id="moderateUncertText" style="font-size:10px;color:#94a3b8;">-</span>
+                <span id="moderateAreaText">-</span>
+              </div>
+              <div class="izt-row izt-lit">
+                <span><span class="izt-dot" style="background:#f59e0b"></span>Light</span>
+                <span id="lightRadiusText">-</span>
+                <span id="lightUncertText" style="font-size:10px;color:#94a3b8;">-</span>
+                <span id="lightAreaText">-</span>
+              </div>
+              <div class="izt-row izt-felt">
+                <span><span class="izt-dot" style="background:#facc15"></span>Felt</span>
+                <span id="feltRadiusText">-</span>
+                <span id="feltUncertText" style="font-size:10px;color:#94a3b8;">-</span>
+                <span id="feltAreaText">-</span>
+              </div>
+            </div>
+            <div class="result-grid" style="margin-top:8px;">
+              <div class="result-row"><span>Site risk</span><strong id="siteRiskText">-</strong></div>
+              <div class="result-row"><span>Affected?</span><strong id="siteAffectedText">-</strong></div>
+              <div class="result-row"><span>Total felt area</span><strong id="totalAreaText">-</strong></div>
+            </div>
+            <div class="panel-note" id="impactSummary">Impact zones calculated from magnitude and depth.</div>
+            <!-- Tsunami hazard flag -->
+            <div id="tsunamiFlag" style="display:none;margin-top:8px;padding:8px 10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:6px;font-size:11.5px;line-height:1.5;"></div>
+            <!-- Aftershock forecast -->
+            <div id="aftershockForecast" style="display:none;margin-top:8px;padding:8px 10px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:6px;font-size:11px;line-height:1.6;"></div>
+            <button class="full-width-btn" id="btnGenerateReport" style="margin-top:12px;background:#1d4ed8;" title="Generate full impact report">
+              &#128196; Generate Impact Report
+            </button>
+          </section>
+
+        </div><!-- /pane-results -->
+
+        <!-- ===== TAB: CHARTS ===== -->
+        <div class="tab-pane" id="pane-charts">
+
+          <section class="panel">
+            <div class="panel-title" style="justify-content:space-between;">
+              <span>&#128202; Data Statistics</span>
+              <button id="btnChartFullscreen" title="Fullscreen chart" style="background:transparent;color:#64748b;border:1px solid #e2e8f0;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                Fullscreen
+              </button>
+            </div>
+            <div class="group">
+              <label for="chartType">Chart View</label>
+              <select id="chartType">
+                <option value="magHist">Magnitude Histogram</option>
+                <option value="depthScatter">Depth vs Magnitude</option>
+                <option value="timeline">Event Timeline</option>
+                <option value="depthDist">Depth Distribution</option>
+                <option value="grCurve">&#128200; Gutenberg-Richter (b-value)</option>
+                <option value="mmiCompare">&#128202; Multi-IPE Comparison</option>
+              </select>
+            </div>
+            <div id="chartContainer" style="position:relative;height:260px;margin-top:8px;">
+              <canvas id="mainChart"></canvas>
+              <div id="chartEmpty" style="display:none;text-align:center;padding:60px 0;font-size:12px;color:#94a3b8;">Load earthquake data to see charts.</div>
+            </div>
+            <div id="chartStats" style="margin-top:10px;font-size:12px;color:#475569;"></div>
+          </section>
+
+
+          <!-- G-R Analysis results -->
+          <section class="panel" id="grPanel" style="display:none;">
+            <div class="panel-title" style="color:#1d4ed8;">&#128200; Gutenberg-Richter Analysis</div>
+            <div class="result-grid" id="grResults"></div>
+            <div class="panel-note" style="font-size:10px;color:#64748b;margin-top:6px;">
+              b-value via Aki (1965) MLE &middot; &sigma;<sub>b</sub> via Shi &amp; Bolt (1982) &middot;
+              M<sub>c</sub> by maximum curvature method
+            </div>
+          </section>
+
+          <!-- Fullscreen chart overlay -->
+          <div id="chartFullscreenOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f172a;flex-direction:column;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:#1e293b;flex-shrink:0;">
+              <div style="display:flex;align-items:center;gap:12px;">
+                <span style="color:#fff;font-size:14px;font-weight:700;">&#128202; Chart — Fullscreen</span>
+                <select id="chartTypeFS" style="font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;cursor:pointer;">
+                  <option value="magHist">Magnitude Histogram</option>
+                  <option value="depthScatter">Depth vs Magnitude</option>
+                  <option value="timeline">Event Timeline</option>
+                  <option value="depthDist">Depth Distribution</option>
+                  <option value="grCurve">&#128200; Gutenberg-Richter (b-value)</option>
+                  <option value="mmiCompare">&#128202; Multi-IPE Comparison</option>
+                </select>
+              </div>
+              <button id="btnChartFSClose" style="background:#ef4444;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;">&#10005; Close</button>
+            </div>
+            <div style="flex:1;padding:16px;min-height:0;position:relative;">
+              <canvas id="mainChartFS"></canvas>
+            </div>
+            <div id="chartStatsFS" style="padding:8px 18px 14px;display:flex;gap:10px;flex-wrap:wrap;"></div>
+          </div>
+
+          <section class="panel">
+            <div class="panel-title">&#127310; 3D Depth View</div>
+            <p style="font-size:12px;color:#475569;margin-bottom:10px;">Earthquakes plotted by location and focal depth in 3D. Sphere size = magnitude.</p>
+            <button id="btn3DView" class="full-width-btn" style="background:#7c3aed;">&#127310; Open 3D Depth Globe</button>
+            <div id="depth3dContainer" style="display:none;margin-top:10px;border-radius:12px;overflow:hidden;height:320px;background:#0f172a;position:relative;">
+              <canvas id="depth3dCanvas" style="width:100%;height:100%;display:block;"></canvas>
+              <div id="depth3dInfo" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,.65);color:#e2e8f0;font-size:10px;padding:5px 9px;border-radius:6px;line-height:1.7;pointer-events:none;"></div>
+              <div style="position:absolute;bottom:8px;right:8px;font-size:10px;color:#64748b;background:rgba(0,0,0,.4);padding:3px 7px;border-radius:4px;">Drag · Scroll to zoom</div>
+              <button id="btn3DClose" style="position:absolute;top:8px;right:8px;background:rgba(30,30,50,.7);color:#e2e8f0;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:4px 9px;font-size:11px;cursor:pointer;font-weight:700;">✕</button>
+            </div>
+          </section>
+
+        </div><!-- /pane-charts -->
+
+      </div><!-- /sidebar-scroll -->
+    </aside>
+
+    <!-- ===== MAP ===== -->
+    <main class="map-area">
+      <div id="mapHint" class="map-hint hidden"></div>
+      <div id="map"></div>
+
+      <!-- Search + Zoom + Home controls (top-left of map) -->
+      <div class="map-search-control" id="mapSearchControl">
+        <!-- Search row -->
+        <div class="map-search-row">
+          <input type="text" id="mapSearchInput" class="map-search-input" placeholder="Search place…" autocomplete="off" />
+          <button class="map-ctrl-btn" id="mapSearchBtn" title="Search">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </button>
+        </div>
+        <!-- Search results dropdown -->
+        <div class="map-search-results" id="mapSearchResults" style="display:none;"></div>
+        <!-- Zoom + Home button group -->
+        <div class="map-btn-group">
+          <button class="map-ctrl-btn map-ctrl-zoom" id="mapZoomIn"  title="Zoom in">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="map-ctrl-btn map-ctrl-zoom" id="mapZoomOut" title="Zoom out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="map-ctrl-btn map-ctrl-home" id="mapHomeBtn" title="Reset to world view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Basemap control -->
+      <div class="basemap-control" id="basemapControl">
+        <button class="basemap-toggle-btn" id="basemapToggleBtn" title="Change basemap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+            <line x1="9" y1="3" x2="9" y2="18"/>
+            <line x1="15" y1="6" x2="15" y2="21"/>
+          </svg>
+        </button>
+        <div class="basemap-panel" id="basemapPanel" style="display:none;">
+          <div class="basemap-panel-title">Basemap</div>
+          <button class="bm-opt active" data-bm="osm">OpenStreetMap</button>
+          <button class="bm-opt" data-bm="cartoLight">Carto Light</button>
+          <button class="bm-opt" data-bm="cartoDark">Carto Dark</button>
+          <button class="bm-opt" data-bm="esriTopo">Esri Topo</button>
+          <button class="bm-opt" data-bm="esriImagery">Esri Satellite</button>
+          <button class="bm-opt" data-bm="esriHybrid">Esri Hybrid</button>
+          <div style="height:1px;background:#e2e8f0;margin:4px 0;"></div>
+          <button class="bm-opt" data-bm="googleSat">Google Satellite</button>
+          <button class="bm-opt" data-bm="googleHybrid">Google Hybrid</button>
+        </div>
+      </div>
+
+      <!-- Map status bar -->
+      <div class="map-statusbar">
+        <span id="mapStatusLeft"></span>
+        <span id="mapStatusCenter" class="map-instruction"></span>
+        <span id="mapStatusRight"></span>
+      </div>
+    </main>
+
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="./app.js"></script>
+
+<script>
+  // ── Disclaimer popup dismiss (pure HTML/CSS logic hook) ──────────────────
+  (function() {
+    var overlay = document.getElementById("disclaimerOverlay");
+    var btn     = document.getElementById("disclaimerContinueBtn");
+    if (!overlay || !btn) return;
+    btn.addEventListener("click", function() {
+      overlay.classList.add("hidden");
+    });
+    // Also allow pressing Enter / Space on the button
+    btn.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        overlay.classList.add("hidden");
+      }
+    });
+  })();
+</script>
+</body>
+</html>
